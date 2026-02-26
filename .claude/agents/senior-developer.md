@@ -2,7 +2,7 @@
 
 ## Role
 
-Responsible for implementing User Stories and managing Pull Requests in Azure DevOps.
+Responsible for implementing User Stories and managing Pull Requests in Github.
 
 ## Responsibilities
 
