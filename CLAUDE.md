@@ -6,7 +6,7 @@ Instructions for Claude Code when working on this project.
 
 Two-part system:
 1. **CLI** (`cli/`) — Node.js/TypeScript tool. Run `recipe add <url>` to extract, normalize, and store a recipe.
-2. **Viewer** (`viewer/`) — PHP + React/Vite app hosted on Hostinger. Not yet scaffolded.
+2. **Viewer** (`viewer/`) — PHP + React/Vite app hosted on Hostinger. Scaffolded in FR-7.
 
 Shared data contract: flat JSON files under `data/recipes/` and `data/images/`.
 
@@ -24,6 +24,24 @@ To run the CLI during development:
 node --loader tsx src/index.ts add <url>
 # or after build:
 node dist/index.js add <url>
+```
+
+## Dev commands (run from `viewer/`)
+
+```bash
+npm run typecheck   # tsc --noEmit
+npm run build       # Vite production build → viewer/dist/
+npm run dev         # Vite dev server (proxies /api/* to localhost:8080)
+```
+
+Local dev with PHP API:
+```bash
+# Terminal 1: PHP API server (from project root)
+export DATA_DIR=$(pwd)/data
+php -S localhost:8080 -t viewer/php viewer/php/index.php
+
+# Terminal 2: Vite dev server
+cd viewer && npm run dev
 ```
 
 ## Environment setup
@@ -101,9 +119,9 @@ cli/src/
 | FR-2 | Extract via Claude | Done (PR #23) |
 | FR-3 | Normalize to 4 servings | Included in FR-2 Claude prompt |
 | FR-4 | Auto-tag | Included in FR-2 Claude prompt |
-| FR-5 | File-based DB storage | Pending |
+| FR-5 | File-based DB storage | Done (PR #24) |
 | FR-6 | FTP sync on add | Pending |
-| FR-7 | Browse collection (viewer) | Pending |
+| FR-7 | Browse collection (viewer) | In PR #25 |
 | FR-8 | View recipe detail (viewer) | Pending |
 | FR-9 | Rescale servings (viewer) | Pending |
 | FR-10 | Deploy viewer on PR merge | Pending |
