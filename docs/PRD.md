@@ -1,7 +1,7 @@
 # Product Requirements Document
 # Recipe Extractor & Viewer
 
-**Version:** 1.1
+**Version:** 1.2
 **Date:** 2026-02-26
 **Author:** Product Manager (AI Agent)
 **Reviewed by:** Application Architect (AI Agent)
@@ -12,8 +12,8 @@
 
 A two-part system for extracting, normalizing, storing, and browsing recipes from the web:
 
-1. **CLI Extractor** — a local command-line tool that accepts a URL, uses Claude AI to extract and normalize the recipe, stores it in a local file-based database, and syncs the result to a Hostinger hosting account via FTP.
-2. **Recipe Viewer** — a PHP/React web application hosted on Hostinger that displays stored recipes and allows serving-size rescaling. Deployed automatically via FTP when a PR is merged to `main`.
+1. **CLI Extractor** — a local command-line tool that accepts a URL, uses Chrome DevTools Protocol to render the page in a real browser, then uses Claude AI to extract, normalize, and tag the recipe. Stores results in a local file-based database and syncs to Hostinger via FTP.
+2. **Recipe Viewer** — a PHP/React web application hosted on Hostinger that displays stored recipes with images, tag filtering, and serving-size rescaling. Deployed automatically via FTP when a PR is merged to `main`.
 
 ---
 
@@ -23,6 +23,7 @@ A two-part system for extracting, normalizing, storing, and browsing recipes fro
 - Maintain a personal, portable recipe collection in a well-structured format
 - Make the collection browsable and usable from any device via a hosted web app
 - Keep infrastructure lightweight: no cloud database, no containers, no CI/CD pipeline beyond FTP
+- Handle modern, JavaScript-heavy recipe sites reliably via browser rendering
 
 ---
 
@@ -40,16 +41,21 @@ A two-part system for extracting, normalizing, storing, and browsing recipes fro
 ```
 [Local Machine]
     │
-    ├── CLI tool (Node.js or PHP CLI)
+    ├── CLI tool (Node.js/TS)
     │       │
-    │       ├── Fetch URL content
-    │       ├── Claude API → extract + normalize recipe
-    │       ├── Auto-tag recipe
+    │       ├── Validate URL
+    │       ├── Chrome DevTools Protocol (Puppeteer)
+    │       │       ├── Navigate to URL (full JS rendering)
+    │       │       ├── Capture rendered HTML
+    │       │       └── Extract up to 2 recipe images (OG / largest visible)
+    │       ├── Claude API → extract + normalize + tag recipe
+    │       ├── Download & store images → data/images/<uuid>/
     │       ├── Write to local file-based DB (JSON files)
-    │       └── FTP sync → Hostinger /data/recipes/
+    │       └── FTP sync → Hostinger /data/ (recipes + images)
     │
 [Hostinger]
     ├── /data/recipes/          ← JSON recipe files (synced via FTP)
+    ├── /data/images/           ← Recipe image files (synced via FTP)
     └── /public_html/           ← Recipe Viewer (PHP + React)
                                     Deployed via FTP on PR merge to main
 ```
@@ -68,6 +74,7 @@ A two-part system for extracting, normalizing, storing, and browsing recipes fro
 
 - **Complexity:** S
 - **Priority:** P0
+- **Status:** Done
 - **Acceptance Criteria:**
   - CLI accepts a single URL argument
   - CLI validates the URL format before proceeding
@@ -83,8 +90,8 @@ A two-part system for extracting, normalizing, storing, and browsing recipes fro
 - **Complexity:** M
 - **Priority:** P0
 - **Acceptance Criteria:**
-  - The page content is fetched (handling common anti-scraping patterns where possible)
-  - The raw HTML/text is sent to Claude with a structured extraction prompt
+  - The page is rendered in a real Chrome browser via Chrome DevTools Protocol (Puppeteer), ensuring JavaScript-rendered content is captured
+  - The rendered HTML is sent to Claude with a structured extraction prompt
   - Claude returns a normalized recipe object with: `title`, `description`, `ingredients`, `steps`, `prepTime`, `cookTime`, `servings` (normalized to 4)
   - If extraction fails, a clear error is shown, nothing is written to disk, and the failure is appended to `logs/failures.log`
 
@@ -127,15 +134,15 @@ A two-part system for extracting, normalizing, storing, and browsing recipes fro
 - **Priority:** P0
 - **Acceptance Criteria:**
   - Each recipe is stored as an individual JSON file under `data/recipes/<uuid>.json`
-  - An index file `data/recipes/index.json` is maintained with `id`, `title`, `tags`, `createdAt`, `slug`
+  - An index file `data/recipes/index.json` is maintained with `id`, `title`, `tags`, `createdAt`, `slug`, `images`
   - File writes are atomic (write to temp file, then rename)
   - Duplicate URL detection: if a recipe from the same URL already exists, the user is prompted to overwrite or skip
-  - Recipe JSON schema is versioned (`"schemaVersion": 1`)
+  - Recipe JSON schema is versioned (`"schemaVersion": 2`)
 
 **Recipe JSON Schema:**
 ```json
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "id": "<uuid>",
   "slug": "pasta-carbonara",
   "title": "Pasta Carbonara",
@@ -146,6 +153,9 @@ A two-part system for extracting, normalizing, storing, and browsing recipes fro
   "prepTime": "10 minutes",
   "cookTime": "20 minutes",
   "tags": ["Italian", "dinner", "quick"],
+  "images": [
+    { "filename": "1.jpg", "alt": "Pasta carbonara in a bowl", "width": 1200, "height": 800 }
+  ],
   "ingredients": [
     { "quantity": "400g", "item": "spaghetti" }
   ],
@@ -166,11 +176,28 @@ A two-part system for extracting, normalizing, storing, and browsing recipes fro
 - **Priority:** P1
 - **Acceptance Criteria:**
   - After a successful local write, the new recipe JSON file is uploaded via FTP to `/data/recipes/`
+  - Any downloaded recipe images are uploaded to `/data/images/<uuid>/`
   - The `index.json` is also re-uploaded after each addition
   - FTP credentials are read from a local `.env` file (never committed to git)
   - Upload errors are reported clearly; local data is never rolled back on FTP failure
   - A `--no-ftp` flag skips the upload for offline use
   - Failed extractions are written to `logs/failures.log` with timestamp, URL, and error reason; a human-readable summary is printed to stderr
+
+---
+
+**FR-11: Extract and Store Recipe Images**
+
+> As a user, I can have up to 2 representative images extracted from each recipe page so that my collection is visually appealing and easy to browse.
+
+- **Complexity:** M
+- **Priority:** P1
+- **Acceptance Criteria:**
+  - During CDP page rendering (FR-2), up to 2 images are identified from the recipe page using this priority order: Open Graph image (`og:image`), structured data image (`schema.org/Recipe > image`), largest visible `<img>` in the recipe content area
+  - Images are downloaded and saved locally under `data/images/<uuid>/1.jpg` and `data/images/<uuid>/2.jpg` (JPEG, max 1200px on longest side, quality 85)
+  - Image metadata (filename, alt text, width, height) is stored in the recipe JSON under `images[]`
+  - If no images can be found or downloaded, the recipe is stored without images (not a failure)
+  - Images are included in the FTP sync (FR-6)
+  - A `--no-images` flag skips image extraction for faster processing
 
 ---
 
@@ -185,7 +212,7 @@ A two-part system for extracting, normalizing, storing, and browsing recipes fro
 - **Complexity:** M
 - **Priority:** P0
 - **Acceptance Criteria:**
-  - Index page lists all recipes with title, tags, and thumbnail (if available)
+  - Index page lists all recipes with title, tags, and thumbnail image (if available; placeholder if not)
   - Recipes can be filtered by tag
   - Clicking a recipe navigates to its detail page
   - Responsive layout (works on mobile and desktop)
@@ -199,7 +226,8 @@ A two-part system for extracting, normalizing, storing, and browsing recipes fro
 - **Complexity:** S
 - **Priority:** P0
 - **Acceptance Criteria:**
-  - Recipe page displays: title, description, prep/cook time, ingredient list, step-by-step instructions
+  - Recipe page displays: hero image (if available), title, description, prep/cook time, ingredient list, step-by-step instructions
+  - A second image (if present) is displayed inline within the steps section
   - Steps are numbered and clearly formatted
   - Tags are displayed as clickable chips
 
@@ -231,7 +259,7 @@ A two-part system for extracting, normalizing, storing, and browsing recipes fro
   - The workflow builds the React front end (`npm run build`)
   - Built assets and PHP files are uploaded to Hostinger via FTP using stored GitHub Secrets (`FTP_HOST`, `FTP_USER`, `FTP_PASS`)
   - The workflow fails and notifies on FTP error
-  - Deploy does not affect `/data/recipes/` (recipe data is managed by the CLI, not the deploy pipeline)
+  - Deploy does not affect `/data/recipes/` or `/data/images/` (recipe data is managed by the CLI, not the deploy pipeline)
 
 ---
 
@@ -239,9 +267,12 @@ A two-part system for extracting, normalizing, storing, and browsing recipes fro
 
 | Decision | Choice | Rationale |
 |---|---|---|
-| CLI runtime | Node.js (TypeScript) | Native `fetch`, easy Claude SDK integration, cross-platform |
+| CLI runtime | Node.js (TypeScript) | Native async, easy Claude SDK integration, cross-platform |
+| Page rendering | Puppeteer (Chrome DevTools Protocol) | Handles JS-rendered recipe sites; enables image extraction from live DOM |
 | AI integration | Anthropic Claude API (`claude-sonnet-4-6`) | Best-in-class instruction following for structured extraction |
 | Local storage | Flat JSON files | No database dependency; git-versionable; trivially portable |
+| Image storage | Local files under `data/images/<uuid>/` | Co-located with recipe data; portable; FTP-syncable |
+| Image processing | `sharp` (Node.js) | Resize + JPEG conversion before storage |
 | FTP library (CLI) | `basic-ftp` (Node.js) | Lightweight, Promise-based, passive mode support |
 | Viewer backend | PHP (no framework) | Hostinger shared hosting; no Node.js runtime available |
 | Viewer frontend | React (Vite, no SSR) | Client-side only; PHP serves `index.html`, React handles routing |
@@ -254,7 +285,6 @@ A two-part system for extracting, normalizing, storing, and browsing recipes fro
 
 - Recipe search (full-text)
 - Recipe editing via the viewer
-- Image extraction / thumbnails
 - Meal planning or shopping list generation
 - OAuth / social login
 - Multiple users or shared collections
@@ -265,7 +295,7 @@ A two-part system for extracting, normalizing, storing, and browsing recipes fro
 
 ```
 P0 (MVP — core loop works end-to-end)
-  FR-1  Submit a Recipe URL
+  FR-1  Submit a Recipe URL          [Done]
   FR-2  Extract Recipe via Claude AI
   FR-3  Normalize to 4 Servings
   FR-5  Store in File-Based DB
@@ -277,6 +307,7 @@ P1 (Complete product)
   FR-4  Auto-Tag Recipes
   FR-6  Sync to Hostinger via FTP
   FR-10 Deploy Viewer on PR Merge
+  FR-11 Extract and Store Recipe Images
 ```
 
 ---
@@ -289,6 +320,10 @@ P1 (Complete product)
 | 2 | Viewer search vs. tag filtering? | **Tag filtering only** for v1 |
 | 3 | Unit system? | **Metric** (g, ml, L, kg) — except `tsp`, `tbsp`, `pinch`, `dash` which stay as-is |
 | 4 | Log failed extractions? | **Yes** — append to `logs/failures.log` with timestamp, URL, and reason |
+| 5 | Page rendering mechanism? | **Puppeteer (CDP)** — plain `fetch` is insufficient for JS-heavy recipe sites |
+| 6 | Image extraction if none found? | **Non-fatal** — recipe stored without images; not appended to failures.log |
+| 7 | Image count limit? | **2 per recipe** — primary (hero) and secondary (in-steps); keeps storage/FTP manageable |
+| 8 | Image format? | **JPEG, max 1200px, quality 85** — good quality/size balance via `sharp` |
 
 ---
 
