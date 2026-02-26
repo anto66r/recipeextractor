@@ -1,0 +1,26 @@
+.container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.tag {
+  padding: 6px 14px;
+  border-radius: 9999px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  background-color: var(--color-tag-bg);
+  color: var(--color-text-muted);
+  transition: background-color 0.15s, color 0.15s;
+  border: 1px solid transparent;
+}
+
+.tag:hover {
+  background-color: var(--color-accent-light);
+  color: var(--color-accent);
+}
+
+.tag.active {
+  background-color: var(--color-tag-active-bg);
+  color: var(--color-tag-active-text);
+}
