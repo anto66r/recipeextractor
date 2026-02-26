@@ -1,6 +1,12 @@
 #!/usr/bin/env node
-import 'dotenv/config';
+import { config } from 'dotenv';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { Command } from 'commander';
+
+// Resolve .env relative to this file's location (cli/src/ → ../../ = project root)
+// This works regardless of the working directory when the CLI is invoked
+config({ path: resolve(dirname(fileURLToPath(import.meta.url)), '../../.env') });
 import { addCommand } from './commands/add.js';
 import { UserError } from './lib/errors.js';
 import { error as logError } from './lib/logger.js';
