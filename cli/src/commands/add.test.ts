@@ -5,6 +5,7 @@ import * as browserService from '../services/browser.js';
 import * as extractorService from '../services/extractor.js';
 import * as storageService from '../services/storage.js';
 import * as failures from '../lib/failures.js';
+import * as ftpService from '../services/ftp.js';
 import { UserError } from '../lib/errors.js';
 
 vi.mock('../lib/url.js');
@@ -12,6 +13,7 @@ vi.mock('../services/browser.js');
 vi.mock('../services/extractor.js');
 vi.mock('../services/storage.js');
 vi.mock('../lib/failures.js');
+vi.mock('../services/ftp.js');
 
 const defaultOptions = { ftp: true, images: true };
 
@@ -243,5 +245,38 @@ describe('addCommand', () => {
     await expect(
       addCommand('https://example.com/', { ftp: false, images: true })
     ).resolves.toBeUndefined();
+  });
+
+  it('calls syncRecipe with the recipe id when ftp: true', async () => {
+    vi.mocked(urlLib.parseUrl).mockReturnValue(new URL('https://example.com/'));
+    vi.mocked(urlLib.checkReachable).mockResolvedValue(undefined);
+    vi.mocked(browserService.renderPage).mockResolvedValue({
+      html: '<html></html>',
+      imageCandidates: [],
+    });
+    vi.mocked(extractorService.extract).mockResolvedValue(mockExtracted);
+    vi.mocked(storageService.saveRecipe).mockResolvedValue(mockRecipe);
+    vi.mocked(ftpService.syncRecipe).mockResolvedValue(undefined);
+    vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
+
+    await addCommand('https://example.com/', { ftp: true, images: true });
+
+    expect(ftpService.syncRecipe).toHaveBeenCalledWith('test-uuid-1234');
+  });
+
+  it('does not call syncRecipe when --no-ftp (ftp: false)', async () => {
+    vi.mocked(urlLib.parseUrl).mockReturnValue(new URL('https://example.com/'));
+    vi.mocked(urlLib.checkReachable).mockResolvedValue(undefined);
+    vi.mocked(browserService.renderPage).mockResolvedValue({
+      html: '<html></html>',
+      imageCandidates: [],
+    });
+    vi.mocked(extractorService.extract).mockResolvedValue(mockExtracted);
+    vi.mocked(storageService.saveRecipe).mockResolvedValue(mockRecipe);
+    vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
+
+    await addCommand('https://example.com/', { ftp: false, images: true });
+
+    expect(ftpService.syncRecipe).not.toHaveBeenCalled();
   });
 });
