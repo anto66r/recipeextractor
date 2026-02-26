@@ -1,0 +1,56 @@
+# Recipe Extractor - Apache Configuration
+
+# Enable URL rewriting
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteBase /
+
+    # Redirect all requests to index.php except for existing files/directories
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule ^(.*)$ index.php [QSA,L]
+</IfModule>
+
+# Security headers
+<IfModule mod_headers.c>
+    # Prevent MIME type sniffing
+    Header set X-Content-Type-Options "nosniff"
+
+    # Enable XSS protection
+    Header set X-XSS-Protection "1; mode=block"
+
+    # Prevent clickjacking
+    Header set X-Frame-Options "SAMEORIGIN"
+
+    # Referrer policy
+    Header set Referrer-Policy "strict-origin-when-cross-origin"
+</IfModule>
+
+# Block access to sensitive directories
+<IfModule mod_rewrite.c>
+    RewriteRule ^logs/ - [F,L]
+    RewriteRule ^config/ - [F,L]
+    RewriteRule ^recipes/data/ - [F,L]
+</IfModule>
+
+# Block direct access to .htaccess, .git, and other hidden files
+<FilesMatch "^\.">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
+# Block access to PHP configuration file
+<Files "config.php">
+    Order allow,deny
+    Deny from all
+</Files>
+
+# Set default charset
+AddDefaultCharset UTF-8
+
+# Disable directory listing
+Options -Indexes
+
+# Custom error pages (optional - can be implemented later)
+# ErrorDocument 404 /index.php
+# ErrorDocument 500 /index.php
