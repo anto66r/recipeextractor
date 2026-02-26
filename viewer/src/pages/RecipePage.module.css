@@ -1,0 +1,23 @@
+.page {
+  max-width: 800px;
+  margin: 48px auto;
+  padding: 0 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.back {
+  font-size: 0.9rem;
+  color: var(--color-accent);
+  font-weight: 500;
+}
+
+.back:hover {
+  text-decoration: underline;
+}
+
+.notice {
+  color: var(--color-text-muted);
+  font-size: 0.95rem;
+}
