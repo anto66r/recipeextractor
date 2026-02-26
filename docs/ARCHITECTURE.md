@@ -1,10 +1,10 @@
 # Architecture Document
 # Recipe Extractor & Viewer
 
-**Version:** 1.0
+**Version:** 1.1
 **Date:** 2026-02-26
 **Author:** Application Architect (AI Agent)
-**PRD Reference:** `docs/PRD.md` v1.1
+**PRD Reference:** `docs/PRD.md` v1.2
 
 ---
 
@@ -13,45 +13,49 @@
 The system consists of two independently deployable components that share a common data contract (the Recipe JSON schema):
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│                      Local Machine                       │
-│                                                         │
-│  ┌──────────────────────────────────────────────────┐  │
-│  │              CLI Tool (Node.js/TS)               │  │
-│  │                                                  │  │
-│  │  recipe add <url>                                │  │
-│  │       │                                          │  │
-│  │  1. Validate URL                                 │  │
-│  │  2. Fetch page HTML                              │  │
-│  │  3. Claude API → extract + normalize + tag       │  │
-│  │  4. Atomic write → data/recipes/<uuid>.json      │  │
-│  │  5. Update data/recipes/index.json               │  │
-│  │  6. FTP upload (recipe + index) → Hostinger      │  │
-│  └──────────────────────────────────────────────────┘  │
-│                           │                             │
-│                    data/recipes/                        │
-│                    logs/failures.log                    │
-└───────────────────────────┼─────────────────────────────┘
-                            │ FTP
-                            ▼
-┌─────────────────────────────────────────────────────────┐
-│                       Hostinger                          │
-│                                                         │
-│  /data/recipes/          ← JSON files (CLI-managed)     │
-│  /public_html/           ← Recipe Viewer                │
-│    ├── index.php         ← SPA entrypoint / router      │
-│    ├── api/              ← PHP data API endpoints        │
-│    └── assets/           ← Vite-built React bundle      │
-└─────────────────────────────────────────────────────────┘
-                            ▲
-                            │ FTP (GitHub Actions)
-┌─────────────────────────────────────────────────────────┐
-│               GitHub Actions (CI/CD)                     │
-│  Trigger: push to main                                  │
-│  1. npm run build  (Vite)                               │
-│  2. FTP upload public_html/ → Hostinger                 │
-│  (never touches /data/recipes/)                         │
-└─────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────┐
+│                        Local Machine                         │
+│                                                             │
+│  ┌────────────────────────────────────────────────────────┐ │
+│  │               CLI Tool (Node.js/TS)                    │ │
+│  │                                                        │ │
+│  │  recipe add <url>                                      │ │
+│  │       │                                                │ │
+│  │  1. Validate URL                                       │ │
+│  │  2. Puppeteer (CDP) → navigate, render, get HTML       │ │
+│  │  3. Extract image candidates from live DOM             │ │
+│  │  4. Claude API → extract + normalize + tag (HTML in)   │ │
+│  │  5. Download + resize images → data/images/<uuid>/     │ │
+│  │  6. Atomic write → data/recipes/<uuid>.json            │ │
+│  │  7. Update data/recipes/index.json                     │ │
+│  │  8. FTP upload (recipe + images + index) → Hostinger   │ │
+│  └────────────────────────────────────────────────────────┘ │
+│                                                             │
+│  data/recipes/         ← JSON recipe files                  │
+│  data/images/          ← Downloaded recipe images           │
+│  logs/failures.log                                          │
+└──────────────────────────────┬──────────────────────────────┘
+                               │ FTP
+                               ▼
+┌─────────────────────────────────────────────────────────────┐
+│                          Hostinger                           │
+│                                                             │
+│  /data/recipes/     ← JSON files (CLI-managed)              │
+│  /data/images/      ← Image files (CLI-managed)             │
+│  /public_html/      ← Recipe Viewer                         │
+│    ├── index.php    ← SPA entrypoint / router               │
+│    ├── api/         ← PHP data API endpoints                 │
+│    └── assets/      ← Vite-built React bundle               │
+└─────────────────────────────────────────────────────────────┘
+                               ▲
+                               │ FTP (GitHub Actions)
+┌─────────────────────────────────────────────────────────────┐
+│                 GitHub Actions (CI/CD)                       │
+│  Trigger: push to main                                      │
+│  1. npm run build  (Vite)                                   │
+│  2. FTP upload public_html/ → Hostinger                     │
+│  (never touches /data/recipes/ or /data/images/)            │
+└─────────────────────────────────────────────────────────────┘
 ```
 
 ---
@@ -62,18 +66,20 @@ The system consists of two independently deployable components that share a comm
 recipeextractor/
 ├── cli/                        # CLI Tool (Node.js/TypeScript)
 │   ├── src/
-│   │   ├── index.ts            # Entry point — registers commands
+│   │   ├── index.ts            # Entry point — registers commands, handles UserError at top level
 │   │   ├── commands/
 │   │   │   └── add.ts          # `recipe add <url>` command handler
 │   │   ├── services/
-│   │   │   ├── fetcher.ts      # URL fetch + HTML extraction
+│   │   │   ├── browser.ts      # Puppeteer lifecycle (launch, navigate, get HTML, close)
+│   │   │   ├── images.ts       # Image candidate extraction + download + resize (sharp)
 │   │   │   ├── extractor.ts    # Claude API integration
 │   │   │   ├── storage.ts      # Atomic file writes + index management
 │   │   │   └── ftp.ts          # FTP sync via basic-ftp
 │   │   ├── lib/
+│   │   │   ├── errors.ts       # UserError class (shared recoverable error type)
 │   │   │   ├── logger.ts       # stdout / stderr / failures.log
 │   │   │   ├── schema.ts       # Zod schema for Recipe type
-│   │   │   └── slug.ts         # URL → slug generation
+│   │   │   └── url.ts          # parseUrl() + checkReachable()
 │   │   └── types.ts            # Shared TypeScript interfaces
 │   ├── package.json
 │   ├── tsconfig.json
@@ -92,31 +98,36 @@ recipeextractor/
 │   │   │   ├── BrowsePage.tsx  # FR-7: recipe list + tag filter
 │   │   │   └── RecipePage.tsx  # FR-8 + FR-9: detail + serving scaler
 │   │   ├── components/
-│   │   │   ├── RecipeCard.tsx
+│   │   │   ├── RecipeCard.tsx  # Thumbnail image + title + tags
 │   │   │   ├── TagFilter.tsx
+│   │   │   ├── RecipeImage.tsx # Hero image with fallback placeholder
 │   │   │   └── ServingScaler.tsx
 │   │   ├── hooks/
-│   │   │   └── useScaledIngredients.ts  # Serving-scale calculation logic
-│   │   └── types.ts            # Recipe interface (mirrors CLI schema)
+│   │   │   └── useScaledIngredients.ts
+│   │   └── types.ts
 │   ├── package.json
 │   ├── vite.config.ts
 │   └── tsconfig.json
 │
 ├── data/
-│   └── recipes/                # File-based database
-│       ├── index.json          # Recipe index (id, title, tags, slug, createdAt)
-│       └── <uuid>.json         # Individual recipe files
+│   └── recipes/                # File-based recipe database
+│       ├── index.json
+│       └── <uuid>.json
+│   └── images/                 # Downloaded recipe images
+│       └── <uuid>/
+│           ├── 1.jpg           # Primary (hero) image
+│           └── 2.jpg           # Secondary image (optional)
 │
 ├── logs/
-│   └── failures.log            # Append-only failure log
+│   └── failures.log
 │
 ├── .github/
 │   └── workflows/
-│       └── deploy-viewer.yml   # FR-10: Build + FTP deploy on push to main
+│       └── deploy-viewer.yml   # FR-10
 │
 ├── docs/
 │   ├── PRD.md
-│   └── ARCHITECTURE.md         # This document
+│   └── ARCHITECTURE.md
 │
 └── .env                        # Local secrets (gitignored)
 ```
@@ -129,14 +140,16 @@ recipeextractor/
 |---|---|---|
 | CLI runtime | Node.js | ≥ 20 LTS |
 | CLI language | TypeScript | ≥ 5.x, strict mode |
-| CLI framework | [Commander.js](https://github.com/tj/commander.js) | v12+ |
+| CLI framework | Commander.js | v12+ |
+| Browser automation | Puppeteer | v22+ (bundles Chromium) |
 | AI integration | Anthropic SDK (`@anthropic-ai/sdk`) | latest |
 | AI model | `claude-sonnet-4-6` | |
 | Schema validation | Zod | v3 |
+| Image processing | `sharp` | v0.33+ |
 | FTP client | `basic-ftp` | v5 |
-| HTML parsing | Node.js `fetch` + `node-html-parser` or Cheerio | |
+| HTML parsing | Puppeteer DOM API (no separate parser needed) | |
 | Viewer frontend | React + Vite | React 18, Vite 5 |
-| Viewer backend | PHP | 8.1+ (Hostinger provides) |
+| Viewer backend | PHP | 8.1+ |
 | CI/CD | GitHub Actions | |
 | FTP deploy action | `SamKirkland/FTP-Deploy-Action` | v4 |
 
@@ -144,33 +157,41 @@ recipeextractor/
 
 ## 4. Data Contract: Recipe JSON Schema
 
-All components must conform to this schema (`schemaVersion: 1`).
+All components must conform to this schema (`schemaVersion: 2`).
 
 ```typescript
+interface RecipeImage {
+  filename: string;   // "1.jpg" or "2.jpg"
+  alt: string;        // Image alt text (extracted from img[alt] or page title)
+  width: number;      // Pixels after resize
+  height: number;
+}
+
+interface Ingredient {
+  quantity: string;
+  item: string;
+}
+
 interface Recipe {
-  schemaVersion: 1;
+  schemaVersion: 2;
   id: string;             // UUID v4
-  slug: string;           // URL-safe, derived from title
+  slug: string;
   title: string;
   description: string;
   sourceUrl: string;
   originalServings: number;
   servings: 4;            // Always stored normalized to 4
-  prepTime: string;       // Human-readable, e.g. "10 minutes"
+  prepTime: string;
   cookTime: string;
-  tags: string[];         // Max 6; from defined taxonomy
+  tags: string[];         // Max 6
+  images: RecipeImage[];  // 0–2 images; empty array if none extracted
   ingredients: Ingredient[];
   steps: string[];
   createdAt: string;      // ISO 8601
 }
-
-interface Ingredient {
-  quantity: string;       // e.g. "400g", "2 tbsp", "pinch"
-  item: string;           // e.g. "spaghetti", "salt"
-}
 ```
 
-**Index entry** (stored in `index.json` as an array):
+**Index entry** (`index.json`):
 
 ```typescript
 interface RecipeIndex {
@@ -178,11 +199,12 @@ interface RecipeIndex {
   slug: string;
   title: string;
   tags: string[];
+  images: RecipeImage[];  // Included so the browse page can show thumbnails without loading each recipe
   createdAt: string;
 }
 ```
 
-### Unit Rules (enforced by Claude prompt)
+### Unit Rules
 
 | Type | Rule |
 |---|---|
@@ -197,7 +219,7 @@ interface RecipeIndex {
 ### 5.1 Command Invocation
 
 ```
-recipe add <url> [--tags tag1,tag2] [--no-ftp]
+recipe add <url> [--tags tag1,tag2] [--no-ftp] [--no-images]
 ```
 
 ### 5.2 Execution Flow
@@ -205,60 +227,110 @@ recipe add <url> [--tags tag1,tag2] [--no-ftp]
 ```
 add.ts
   │
-  ├── validateUrl(url)
+  ├── validateUrl(url)                        [lib/url.ts]
   │     └── throws UserError on invalid/unreachable
   │
-  ├── fetcher.fetchPage(url)
-  │     ├── fetch(url, { headers: { 'User-Agent': ... } })
-  │     └── returns: raw HTML string
+  ├── browser.renderPage(url)                 [services/browser.ts]
+  │     ├── puppeteer.launch({ headless: true })
+  │     ├── page.goto(url, { waitUntil: 'networkidle2' })
+  │     ├── page.content() → rendered HTML string
+  │     ├── images.extractCandidates(page)    [services/images.ts]
+  │     │     ├── 1. <meta property="og:image"> content
+  │     │     ├── 2. JSON-LD schema.org/Recipe > image
+  │     │     └── 3. Largest visible <img> in recipe content area
+  │     └── browser.close()
+  │     returns: { html: string, imageCandidates: string[] }
   │
-  ├── extractor.extract(html, url)
-  │     ├── Sends Claude API message with structured extraction prompt
-  │     ├── Claude responds with JSON matching Recipe schema
-  │     ├── Validates response with Zod schema
-  │     └── Returns: Recipe object (servings already normalized to 4)
+  ├── extractor.extract(html, url)            [services/extractor.ts]
+  │     ├── Send Claude API message with extraction prompt + rendered HTML
+  │     ├── Claude returns JSON matching Recipe schema (minus images)
+  │     ├── Validate response with Zod
+  │     └── returns: Partial<Recipe>
   │
-  ├── storage.checkDuplicate(sourceUrl)
-  │     ├── Reads index.json
-  │     └── Prompts to overwrite/skip if URL exists
+  ├── images.download(candidates, recipeId)   [services/images.ts]
+  │     ├── Download up to 2 images (HTTP GET)
+  │     ├── Resize to max 1200px longest side (sharp)
+  │     ├── Save as JPEG quality 85 → data/images/<uuid>/1.jpg [, 2.jpg]
+  │     └── returns: RecipeImage[]  (empty array if none downloaded)
   │
-  ├── storage.save(recipe)
-  │     ├── Write to data/recipes/<uuid>.json.tmp
-  │     ├── fs.rename() → data/recipes/<uuid>.json  (atomic)
+  ├── storage.checkDuplicate(sourceUrl)       [services/storage.ts]
+  │     └── Prompt to overwrite/skip if URL exists
+  │
+  ├── storage.save(recipe)                    [services/storage.ts]
+  │     ├── Write data/images/<uuid>/ (already on disk from images.download)
+  │     ├── Write data/recipes/<uuid>.json.tmp → rename (atomic)
   │     └── Append entry to data/recipes/index.json
   │
-  └── ftp.sync(recipe.id)  [unless --no-ftp]
+  └── ftp.sync(recipe.id)                    [services/ftp.ts]  [unless --no-ftp]
         ├── Upload data/recipes/<uuid>.json
+        ├── Upload data/images/<uuid>/ (all files)
         └── Upload data/recipes/index.json
 ```
 
-### 5.3 Error Handling
+### 5.3 Browser Service (`services/browser.ts`)
+
+```typescript
+// Key responsibilities:
+// - Manage Puppeteer browser lifecycle (singleton per CLI invocation)
+// - Set realistic User-Agent before navigation
+// - Wait for networkidle2 to ensure JS-rendered content is present
+// - Return rendered HTML + hand off the page object for image extraction
+// - Always close browser on success or error (try/finally)
+
+interface PageResult {
+  html: string;
+  imageCandidates: string[]; // Up to 5 candidate image URLs, in priority order
+}
+```
+
+### 5.4 Image Service (`services/images.ts`)
+
+**Candidate extraction (from live Puppeteer page):**
+
+```
+Priority 1: <meta property="og:image"> content attribute
+Priority 2: JSON-LD script[type="application/ld+json"] → Recipe.image (first if array)
+Priority 3: Largest <img> element by naturalWidth × naturalHeight
+            (filtered to elements within article/main/[class*=recipe])
+```
+
+**Download + resize:**
+
+```
+For each candidate (max 2 downloads):
+  1. fetch(imageUrl, { signal: AbortSignal.timeout(10000) })
+  2. Pipe to sharp()
+     .resize({ width: 1200, height: 1200, fit: 'inside', withoutEnlargement: true })
+     .jpeg({ quality: 85 })
+     .toFile(`data/images/<uuid>/<n>.jpg`)
+  3. Record { filename, alt, width, height } from sharp metadata
+```
+
+If an image download fails, skip it and try the next candidate. Image failure is non-fatal.
+
+### 5.5 Error Handling
 
 | Scenario | Behavior |
 |---|---|
-| Invalid URL format | Print error to stderr; exit code 1; no log entry |
-| URL unreachable | Print error to stderr; append to `logs/failures.log`; exit 1 |
-| Claude API error | Print error to stderr; append to `logs/failures.log`; exit 1 |
-| Claude returns malformed JSON | Retry once; if still invalid, log + exit 1 |
-| FTP upload failure | Print warning to stderr; local data is **not** rolled back; exit 0 |
+| Invalid URL format | Print error to stderr; exit 1; no log entry |
+| URL unreachable | Print error to stderr; append to failures.log; exit 1 |
+| Puppeteer navigation fails | Print error to stderr; append to failures.log; exit 1 |
+| Chrome not installed | `puppeteer` bundles Chromium — no external dependency |
+| Claude API error | Print error to stderr; append to failures.log; exit 1 |
+| Claude returns malformed JSON | Retry once; log + exit 1 on second failure |
+| Image download fails | Skip that image; continue (non-fatal) |
+| FTP upload failure | Print warning to stderr; local data NOT rolled back; exit 0 |
 | Duplicate URL (user skips) | Print info to stdout; exit 0 cleanly |
 
-**failures.log format:**
-```
-[2026-02-26T12:34:56Z] FAILED url=https://... reason="Claude returned invalid JSON after retry"
-```
-
-### 5.4 Claude Extraction Prompt Design
+### 5.6 Claude Extraction Prompt Design
 
 The prompt must instruct Claude to:
-1. Extract recipe content from HTML, ignoring ads/nav/comments
+1. Extract recipe content from rendered HTML (JS-rendered; cleaner than raw HTML)
 2. Normalize all ingredients to serve exactly 4 people
 3. Convert units to metric (except tsp/tbsp/pinch/dash)
-4. Rewrite steps as clear, concise, numbered plain English
+4. Rewrite steps as clear, numbered plain English
 5. Assign up to 6 tags from the defined taxonomy
 6. Return **only** valid JSON matching the Recipe schema — no prose
-
-The prompt should include the Zod schema as a JSON Schema type definition for maximum fidelity.
 
 ---
 
@@ -266,44 +338,49 @@ The prompt should include the Zod schema as a JSON Schema type definition for ma
 
 ### 6.1 PHP Layer Responsibilities
 
-PHP handles two concerns only:
-1. **SPA routing fallback** — `index.php` serves the Vite-built `index.html` for all non-API routes, enabling client-side React Router navigation
-2. **Data API** — reads JSON files from `/data/recipes/` (outside `public_html`) and returns them as JSON responses
+1. **SPA routing fallback** — `index.php` serves Vite-built `index.html` for non-API routes
+2. **Data API** — reads JSON + serves image URLs from `/data/` (above web root)
 
 ```
-GET /api/recipes         → php/api/recipes.php  → reads index.json
-GET /api/recipe?id=<id>  → php/api/recipe.php   → reads <uuid>.json
+GET /api/recipes              → php/api/recipes.php  → index.json
+GET /api/recipe?id=<uuid>     → php/api/recipe.php   → <uuid>.json
+GET /data/images/<uuid>/1.jpg → served directly by PHP/web server from /data/images/
 ```
 
-**Security note:** PHP API endpoints must validate the `id` parameter is a valid UUID before constructing file paths, to prevent path traversal.
+**Security note:** PHP endpoints validate `id` against `/^[0-9a-f-]{36}$/` before constructing file paths.
 
-### 6.2 React Application Structure
+### 6.2 Image Serving on Hostinger
+
+The `/data/` directory is above `public_html`. Images are served via a PHP pass-through endpoint or via a symbolic link / alias. Recommended approach: create a read-only PHP endpoint `api/image.php?id=<uuid>&n=<1|2>` that streams the image file with correct Content-Type headers. This keeps images behind validated paths.
+
+### 6.3 React Application Structure
 
 ```
 App.tsx
-  ├── Route "/"         → BrowsePage
-  │     ├── Fetches /api/recipes (index)
-  │     ├── TagFilter component (client-side filter)
-  │     └── RecipeCard list → links to /recipe/:slug
+  ├── Route "/"           → BrowsePage
+  │     ├── Fetches /api/recipes (index — includes images[])
+  │     ├── TagFilter (client-side)
+  │     └── RecipeCard list
+  │           └── RecipeImage (thumbnail from images[0], placeholder if none)
   │
   └── Route "/recipe/:slug" → RecipePage
-        ├── Fetches /api/recipe?id=<id>  (looks up id from slug via index)
-        ├── ServingScaler component (default: 4)
-        │     └── +/- stepper, range [1–20]
-        └── Ingredient list scaled via useScaledIngredients(ingredients, scale)
+        ├── Fetches /api/recipe?id=<id>
+        ├── RecipeImage (hero — images[0], full width)
+        ├── ServingScaler (+/- stepper, range 1–20)
+        ├── Ingredient list (scaled via useScaledIngredients)
+        ├── Steps (numbered; images[1] displayed after step 3 if present)
+        └── Tag chips
 ```
 
-### 6.3 Serving Scaler Logic
+### 6.4 RecipeImage Component
 
 ```typescript
-// useScaledIngredients.ts
-// scale = currentServings / 4  (4 is the stored baseline)
-// Quantities are parsed from strings like "400g", "2 tbsp", "1/3 cup"
-// tsp/tbsp/pinch/dash quantities are scaled numerically
-// Fractional results use fraction.js or a small utility to display as ⅓, ½ etc.
+// RecipeImage.tsx
+// Props: images: RecipeImage[], index: 0 | 1, className?: string
+// - Renders <img> with src pointing to /api/image?id=<recipeId>&n=<index+1>
+// - Shows a neutral placeholder SVG if images[index] is undefined
+// - Uses loading="lazy" for all non-hero images
 ```
-
-The scaler operates entirely client-side; URLs do not change on rescale (FR-9).
 
 ---
 
@@ -311,16 +388,14 @@ The scaler operates entirely client-side; URLs do not change on rescale (FR-9).
 
 ### 7.1 CLI FTP Sync (runtime, FR-6)
 
-- Triggered after every successful `recipe add`
-- Uses `basic-ftp` with passive mode
-- Credentials read from `.env`: `FTP_HOST`, `FTP_USER`, `FTP_PASS`, `FTP_REMOTE_DATA_PATH`
-- Only uploads: the new recipe file + updated `index.json`
-- `--no-ftp` flag disables for offline use
+- After every successful `recipe add`
+- Uploads: `data/recipes/<uuid>.json`, `data/images/<uuid>/` (all files), `data/recipes/index.json`
+- `--no-ftp` disables for offline use
+- Image upload failures are non-fatal (local data preserved)
 
 ### 7.2 Viewer Deploy (GitHub Actions, FR-10)
 
 ```yaml
-# .github/workflows/deploy-viewer.yml
 on:
   push:
     branches: [main]
@@ -333,30 +408,31 @@ jobs:
       - checkout
       - npm ci && npm run build  (in viewer/)
       - FTP upload viewer/dist/ + viewer/php/ → /public_html/
-        (excludes /data/recipes/ — managed by CLI only)
+        (excludes /data/ — managed by CLI only)
 ```
-
-Secrets required in GitHub repository settings: `FTP_HOST`, `FTP_USER`, `FTP_PASS`.
 
 ### 7.3 Hostinger Directory Layout
 
 ```
 /
-├── data/
-│   └── recipes/                ← CLI-managed; outside web root
-│       ├── index.json
-│       └── <uuid>.json
-└── public_html/                ← Web root
-    ├── index.php               ← SPA shell
+├── data/                           ← Above web root; not directly accessible
+│   ├── recipes/
+│   │   ├── index.json
+│   │   └── <uuid>.json
+│   └── images/
+│       └── <uuid>/
+│           ├── 1.jpg
+│           └── 2.jpg
+└── public_html/                    ← Web root
+    ├── index.php
     ├── api/
     │   ├── recipes.php
-    │   └── recipe.php
-    └── assets/                 ← Vite build output
+    │   ├── recipe.php
+    │   └── image.php               ← Streams images from /data/images/ safely
+    └── assets/
         ├── index-<hash>.js
         └── index-<hash>.css
 ```
-
-The `/data/` directory sits **above** `public_html` so recipe JSON files are not directly web-accessible (they are served only through the PHP API).
 
 ---
 
@@ -373,13 +449,9 @@ The `/data/` directory sits **above** `public_html` so recipe JSON files are not
 | `FTP_USER` | GitHub Actions deploy | GitHub Secret |
 | `FTP_PASS` | GitHub Actions deploy | GitHub Secret |
 
-`.env.example` is committed; `.env` is gitignored.
-
 ---
 
 ## 9. Tag Taxonomy
-
-Claude auto-tagging must draw exclusively from this set:
 
 **Meal type:** `breakfast`, `lunch`, `dinner`, `snack`, `dessert`, `drink`
 
@@ -389,33 +461,35 @@ Claude auto-tagging must draw exclusively from this set:
 
 **Attribute:** `quick`, `meal-prep`, `one-pot`, `batch-cooking`, `comfort-food`
 
-Maximum 6 tags per recipe. User-supplied `--tags` values are merged in, replacing auto-tags if count would exceed 6 (user tags take priority).
+Maximum 6 tags per recipe. User-supplied `--tags` values take priority.
 
 ---
 
 ## 10. Implementation Sequencing
 
-Dependencies between stories that must inform sprint planning:
-
 ```
-FR-1 → FR-2 → FR-3 → FR-5 → FR-6
-                ↓
-              FR-4 (can be done in same Claude call as FR-2/3)
+FR-1 (done) → services/browser.ts → FR-2 → FR-3 → FR-5 → FR-6
+                      ↓
+                FR-11 (images) ─────────────────────────┘
+                (can be done in same pass as FR-2/5/6)
+
+FR-4 (auto-tag) runs in same Claude call as FR-2/3
 
 FR-5 → FR-7 → FR-8 → FR-9
 
-FR-10 (independent; only requires viewer/ directory to exist)
+FR-10 (independent; needs viewer/ to be buildable)
 ```
 
 **Recommended build order:**
 
-1. `FR-5` — Storage layer first (defines schema; everything else depends on it)
-2. `FR-1` — URL validation and CLI scaffolding
-3. `FR-2` + `FR-3` + `FR-4` — Claude integration (single API call covers all three)
-4. `FR-6` — FTP sync (add after core loop works)
-5. `FR-7` + `FR-8` — Viewer browse + detail (PHP API + React skeleton)
-6. `FR-9` — Serving scaler (builds on FR-8)
-7. `FR-10` — GitHub Actions deploy (configure last; needs viewer to be buildable)
+1. `services/browser.ts` — Puppeteer wrapper (prerequisite for FR-2 and FR-11)
+2. `FR-2` + `FR-3` + `FR-4` — Claude integration (single API call)
+3. `FR-11` — Image extraction + resize (piggybacks on browser session from FR-2)
+4. `FR-5` — Storage layer (now includes images; schema v2)
+5. `FR-6` — FTP sync (now includes image directories)
+6. `FR-7` + `FR-8` — Viewer browse + detail (with image display)
+7. `FR-9` — Serving scaler
+8. `FR-10` — GitHub Actions deploy
 
 ---
 
@@ -423,14 +497,17 @@ FR-10 (independent; only requires viewer/ directory to exist)
 
 | Risk | Likelihood | Mitigation |
 |---|---|---|
-| Anti-scraping blocks on recipe sites | Medium | Set realistic `User-Agent`; use `Accept` headers; document that some sites will fail |
+| Recipe sites reject automated browsers (bot detection) | Medium | Puppeteer with realistic User-Agent + `networkidle2`; document that some sites will still fail |
+| Puppeteer Chromium startup time adds 3–5s per invocation | High | Accept the trade-off; browser launch is unavoidable for JS rendering; consider keeping browser open if batch mode is added later |
 | Claude returns structurally invalid JSON | Low | Zod validation + one retry; log + graceful exit on second failure |
-| FTP credentials in `.env` accidentally committed | Low | `.gitignore` enforced; `.env.example` committed instead |
-| Path traversal via `id` param in PHP API | Low | Validate `id` against `/^[0-9a-f-]{36}$/` before file path construction |
-| FTP upload partial failure (file uploaded, index not) | Low | Upload recipe file first, then index; FTP failure is non-blocking to local state |
-| Hostinger PHP version mismatch | Low | Target PHP 8.1 (widely available on shared hosting); document requirement |
-| Serving scaler float precision errors | Medium | Use `fraction.js` or integer arithmetic with rational numbers for ingredient scaling |
+| FTP credentials accidentally committed | Low | `.gitignore` enforced; `.env.example` committed instead |
+| Path traversal via `id` param in PHP API | Low | Validate against `/^[0-9a-f-]{36}$/` before file path construction |
+| Image download from external CDN is slow or throttled | Medium | 10s timeout per image; skip and continue on failure |
+| `sharp` native binary not available on CI | Low | `sharp` provides prebuilt binaries for all major platforms via npm |
+| Puppeteer Chromium version incompatible with OS | Low | Puppeteer bundles its own Chromium; no system dependency |
+| FTP partial failure (recipe uploaded, images not) | Low | Upload recipe last (after images); FTP failure is non-blocking to local state |
+| Serving scaler float precision errors | Medium | Use integer arithmetic with rational numbers for ingredient scaling |
 
 ---
 
-*This document was produced by the application-architect agent based on PRD v1.1.*
+*This document was produced by the application-architect agent based on PRD v1.2.*
