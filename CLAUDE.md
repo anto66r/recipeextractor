@@ -1,0 +1,128 @@
+# CLAUDE.md — Recipe Extractor
+
+Instructions for Claude Code when working on this project.
+
+## Project overview
+
+Two-part system:
+1. **CLI** (`cli/`) — Node.js/TypeScript tool. Run `recipe add <url>` to extract, normalize, and store a recipe.
+2. **Viewer** (`viewer/`) — PHP + React/Vite app hosted on Hostinger. Not yet scaffolded.
+
+Shared data contract: flat JSON files under `data/recipes/` and `data/images/`.
+
+## Dev commands (run from `cli/`)
+
+```bash
+npm test            # vitest (unit tests only — no browser launched)
+npm run typecheck   # tsc --noEmit
+npm run build       # compile to dist/
+npm run dev         # run CLI via tsx (no compile step)
+```
+
+To run the CLI during development:
+```bash
+node --loader tsx src/index.ts add <url>
+# or after build:
+node dist/index.js add <url>
+```
+
+## Environment setup
+
+Copy `.env.example` to `.env` at the project root and fill in values:
+```
+ANTHROPIC_API_KEY=sk-ant-...
+FTP_HOST=
+FTP_USER=
+FTP_PASS=
+FTP_REMOTE_DATA_PATH=/data/recipes/
+```
+
+`dotenv/config` is loaded at the top of `index.ts` — the `.env` file must be in the directory where the CLI is invoked (project root).
+
+## Branch convention
+
+```
+[feature|bug]/[storyId]-[short-description]
+```
+Example: `feature/FR-2-extract-recipe`
+
+Always branch off `main`. Open a PR back to `main`.
+
+## Story workflow (implement-story skill)
+
+Use `/implement-story <FR-N>` to run the full implementation workflow:
+Phase 1 (prep) → Phase 2 (plan + user approval) → Phase 3 (implement) → Phase 4 (QA) → Phase 5 (commit + PR).
+
+## Architecture decisions to respect
+
+- **`UserError`** (`lib/errors.ts`) — all user-facing errors. Caught at top level in `index.ts` and printed cleanly. Internal/unexpected errors use plain `Error` and surface as stack traces.
+- **`process.exit`** only in `index.ts`. Never call it inside services or commands.
+- **`logFailure`** (`lib/failures.ts`) — call for any failure that occurs after `parseUrl()` succeeds. It is best-effort: wrap it in try/catch and always re-throw the original error.
+- **`browser.close()`** must be in a `finally` block with `.catch(() => {})` to never mask the original error.
+- **Retry policy** (`extractor.ts`) — retry once on both API transport errors and JSON parse/Zod validation failures. Throw `UserError` on second failure.
+- **HTML trimming** — strip `<script>`, `<style>`, and HTML comments before sending to Claude to reduce token count.
+- **Fence stripping** — Claude sometimes wraps JSON in markdown fences; `stripFences()` handles fences with or without preamble text.
+- **`dotenv`** loaded eagerly in `index.ts`; API key validated lazily inside `extractor.ts`.
+
+## Testing conventions
+
+- Test framework: **Vitest**
+- Mock modules with `vi.mock('../path/to/module.js')` (always include `.js` extension)
+- Mock top-level variables used inside `vi.mock()` factories with `vi.hoisted()`
+- Mock globals with `vi.stubGlobal()` / `vi.unstubAllGlobals()`
+- Stub env vars with `vi.stubEnv()` / `vi.unstubAllEnvs()`
+- No integration tests — all tests run with mocked Puppeteer and mocked Anthropic SDK
+- Test files live alongside the source file they test (e.g., `browser.test.ts` next to `browser.ts`)
+
+## CLI source structure
+
+```
+cli/src/
+  index.ts              # Entry point — Commander setup, dotenv, UserError boundary
+  commands/
+    add.ts              # `recipe add <url>` handler
+  services/
+    browser.ts          # Puppeteer CDP: renderPage() → { html, imageCandidates }
+    extractor.ts        # Claude API: extract() → ExtractedRecipe
+  lib/
+    errors.ts           # UserError class
+    failures.ts         # logFailure() → logs/failures.log
+    logger.ts           # info(), warn(), error() to stdout/stderr
+    schema.ts           # Zod schemas: ExtractedRecipeSchema, IngredientSchema
+    url.ts              # parseUrl(), checkReachable()
+  types.ts              # Recipe, RecipeIndex, RecipeImage (schemaVersion 2)
+```
+
+## Story status
+
+| Story | Description | Status |
+|---|---|---|
+| FR-1 | Submit URL | Done (PR #22) |
+| FR-2 | Extract via Claude | Done (PR #23) |
+| FR-3 | Normalize to 4 servings | Included in FR-2 Claude prompt |
+| FR-4 | Auto-tag | Included in FR-2 Claude prompt |
+| FR-5 | File-based DB storage | Pending |
+| FR-6 | FTP sync on add | Pending |
+| FR-7 | Browse collection (viewer) | Pending |
+| FR-8 | View recipe detail (viewer) | Pending |
+| FR-9 | Rescale servings (viewer) | Pending |
+| FR-10 | Deploy viewer on PR merge | Pending |
+| FR-11 | Extract and store images | Pending |
+
+## What FR-5 must implement
+
+`storage.ts` service — called from `add.ts` after `extract()` succeeds:
+- Generate UUID v4 for `recipe.id`
+- Generate `slug` from `title` (kebab-case, lowercase)
+- Atomic write: `data/recipes/<uuid>.json.tmp` → rename to `data/recipes/<uuid>.json`
+- Append entry to `data/recipes/index.json`
+- Check for duplicate `sourceUrl` in `index.json` before writing; prompt user to overwrite or skip
+- Schema version 2 (already defined in `types.ts`)
+
+## What to avoid
+
+- Never call `process.exit()` outside `index.ts`
+- Never commit `.env` (it is gitignored)
+- Never add `--no-verify` to git commands
+- Do not write to `data/` during tests — mock the storage service
+- Do not run Puppeteer in tests — mock the `browser` module
