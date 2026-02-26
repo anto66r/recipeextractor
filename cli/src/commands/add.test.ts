@@ -3,12 +3,14 @@ import { addCommand } from './add.js';
 import * as urlLib from '../lib/url.js';
 import * as browserService from '../services/browser.js';
 import * as extractorService from '../services/extractor.js';
+import * as storageService from '../services/storage.js';
 import * as failures from '../lib/failures.js';
 import { UserError } from '../lib/errors.js';
 
 vi.mock('../lib/url.js');
 vi.mock('../services/browser.js');
 vi.mock('../services/extractor.js');
+vi.mock('../services/storage.js');
 vi.mock('../lib/failures.js');
 
 const defaultOptions = { ftp: true, images: true };
@@ -25,6 +27,24 @@ const mockExtracted = {
   steps: ['Boil water.', 'Cook pasta.'],
 };
 
+const mockRecipe = {
+  schemaVersion: 2 as const,
+  id: 'test-uuid-1234',
+  slug: 'pasta-carbonara',
+  title: 'Pasta Carbonara',
+  description: 'A classic Roman pasta dish.',
+  sourceUrl: 'https://example.com/',
+  originalServings: 2,
+  servings: 4 as const,
+  prepTime: '10 minutes',
+  cookTime: '20 minutes',
+  tags: ['Italian', 'dinner'] as Array<'Italian' | 'dinner'>,
+  images: [],
+  ingredients: [{ quantity: '400g', item: 'spaghetti' }],
+  steps: ['Boil water.', 'Cook pasta.'],
+  createdAt: '2026-02-26T12:00:00.000Z',
+};
+
 describe('addCommand', () => {
   afterEach(() => {
     vi.restoreAllMocks();
@@ -38,6 +58,7 @@ describe('addCommand', () => {
       imageCandidates: [],
     });
     vi.mocked(extractorService.extract).mockResolvedValue(mockExtracted);
+    vi.mocked(storageService.saveRecipe).mockResolvedValue(mockRecipe);
     vi.mocked(failures.logFailure).mockResolvedValue(undefined);
 
     const writeSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
@@ -55,6 +76,7 @@ describe('addCommand', () => {
       imageCandidates: [],
     });
     vi.mocked(extractorService.extract).mockResolvedValue(mockExtracted);
+    vi.mocked(storageService.saveRecipe).mockResolvedValue(mockRecipe);
     vi.mocked(failures.logFailure).mockResolvedValue(undefined);
 
     const writeSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
@@ -72,6 +94,7 @@ describe('addCommand', () => {
       imageCandidates: [],
     });
     vi.mocked(extractorService.extract).mockResolvedValue(mockExtracted);
+    vi.mocked(storageService.saveRecipe).mockResolvedValue(mockRecipe);
     vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
 
     await addCommand('https://example.com/recipe', defaultOptions);
@@ -87,6 +110,7 @@ describe('addCommand', () => {
       imageCandidates: [],
     });
     vi.mocked(extractorService.extract).mockResolvedValue(mockExtracted);
+    vi.mocked(storageService.saveRecipe).mockResolvedValue(mockRecipe);
     vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
 
     await addCommand('https://example.com/', defaultOptions);
@@ -95,6 +119,22 @@ describe('addCommand', () => {
       '<html>rendered</html>',
       'https://example.com/'
     );
+  });
+
+  it('calls saveRecipe with extracted recipe and URL', async () => {
+    vi.mocked(urlLib.parseUrl).mockReturnValue(new URL('https://example.com/'));
+    vi.mocked(urlLib.checkReachable).mockResolvedValue(undefined);
+    vi.mocked(browserService.renderPage).mockResolvedValue({
+      html: '<html></html>',
+      imageCandidates: [],
+    });
+    vi.mocked(extractorService.extract).mockResolvedValue(mockExtracted);
+    vi.mocked(storageService.saveRecipe).mockResolvedValue(mockRecipe);
+    vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
+
+    await addCommand('https://example.com/', defaultOptions);
+
+    expect(storageService.saveRecipe).toHaveBeenCalledWith(mockExtracted, 'https://example.com/');
   });
 
   it('calls logFailure and rethrows when renderPage throws', async () => {
@@ -197,6 +237,7 @@ describe('addCommand', () => {
       imageCandidates: [],
     });
     vi.mocked(extractorService.extract).mockResolvedValue(mockExtracted);
+    vi.mocked(storageService.saveRecipe).mockResolvedValue(mockRecipe);
     vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
 
     await expect(

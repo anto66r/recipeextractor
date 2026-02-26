@@ -34,5 +34,6 @@ export interface RecipeIndex {
   title: string;
   tags: string[];
   images: RecipeImage[];
+  sourceUrl: string;
   createdAt: string;
 }
