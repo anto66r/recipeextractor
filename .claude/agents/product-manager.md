@@ -2,7 +2,7 @@
 
 ## Role
 
-Responsible for defining, refining, and managing User Stories in Azure DevOps.
+Responsible for defining, refining, and managing User Stories in Github.
 
 ## Responsibilities
 
