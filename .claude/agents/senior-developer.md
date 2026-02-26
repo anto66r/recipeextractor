@@ -29,3 +29,4 @@ Responsible for implementing User Stories and managing Pull Requests in Github.
 - Do not modify story priority or acceptance criteria
 - Do not complete PRs without required approvals
 - Do not delete stories or PRs
+- Do not write tests
