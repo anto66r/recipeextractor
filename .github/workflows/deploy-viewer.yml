@@ -53,6 +53,6 @@ jobs:
             set ssl:verify-certificate no
             set ssl:verify-hostname no
             open -u \"$FTP_USER,$FTP_PASS\" ftps://$FTP_HOST
-            mirror --reverse --verbose ./deploy/ /public_html/
+            mirror --reverse --verbose ./deploy/ /public/
             quit
           "
