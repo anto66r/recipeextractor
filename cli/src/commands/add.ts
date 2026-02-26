@@ -4,6 +4,7 @@ import { info } from '../lib/logger.js';
 import { logFailure } from '../lib/failures.js';
 import { renderPage } from '../services/browser.js';
 import { extract } from '../services/extractor.js';
+import { saveRecipe } from '../services/storage.js';
 
 export interface AddOptions {
   // Populated by --tags <tags>; merged with auto-tags in FR-4
@@ -27,9 +28,11 @@ export async function addCommand(url: string, options: AddOptions): Promise<void
     // Step 3 (FR-2): Render page and extract recipe via Claude
     const pageResult = await renderPage(parsed.href);
     const extracted = await extract(pageResult.html, parsed.href);
-
     info(`Extracted: ${extracted.title}`);
-    info(JSON.stringify(extracted, null, 2));
+
+    // Step 4 (FR-5): Persist recipe to file-based database
+    const recipe = await saveRecipe(extracted, parsed.href);
+    info(`Saved recipe: ${recipe.id}`);
   } catch (e: unknown) {
     const reason = e instanceof Error ? e.message : String(e);
     // logFailure is best-effort; don't let its failure mask the original error
@@ -41,5 +44,5 @@ export async function addCommand(url: string, options: AddOptions): Promise<void
     throw e;
   }
 
-  // Storage (FR-5) and FTP sync (FR-6) will be added in subsequent stories
+  // FTP sync (FR-6) will be added in subsequent stories
 }
