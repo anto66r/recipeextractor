@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import 'dotenv/config';
 import { Command } from 'commander';
 import { addCommand } from './commands/add.js';
 import { UserError } from './lib/errors.js';
@@ -16,6 +17,7 @@ program
   .description('Extract and store a recipe from a URL')
   .option('--tags <tags>', 'Comma-separated tags to add or override auto-tags')
   .option('--no-ftp', 'Skip FTP upload after saving')
+  .option('--no-images', 'Skip image extraction')
   .action(addCommand);
 
 // parseAsync handles async action handlers; UserError bubbles up here for a clean exit

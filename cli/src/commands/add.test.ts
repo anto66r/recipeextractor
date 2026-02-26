@@ -1,9 +1,29 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
 import { addCommand } from './add.js';
 import * as urlLib from '../lib/url.js';
+import * as browserService from '../services/browser.js';
+import * as extractorService from '../services/extractor.js';
+import * as failures from '../lib/failures.js';
 import { UserError } from '../lib/errors.js';
 
 vi.mock('../lib/url.js');
+vi.mock('../services/browser.js');
+vi.mock('../services/extractor.js');
+vi.mock('../lib/failures.js');
+
+const defaultOptions = { ftp: true, images: true };
+
+const mockExtracted = {
+  title: 'Pasta Carbonara',
+  description: 'A classic Roman pasta dish.',
+  originalServings: 2,
+  servings: 4 as const,
+  prepTime: '10 minutes',
+  cookTime: '20 minutes',
+  tags: ['Italian', 'dinner'] as Array<'Italian' | 'dinner'>,
+  ingredients: [{ quantity: '400g', item: 'spaghetti' }],
+  steps: ['Boil water.', 'Cook pasta.'],
+};
 
 describe('addCommand', () => {
   afterEach(() => {
@@ -13,13 +33,101 @@ describe('addCommand', () => {
   it('prints a confirmation to stdout on success', async () => {
     vi.mocked(urlLib.parseUrl).mockReturnValue(new URL('https://example.com/'));
     vi.mocked(urlLib.checkReachable).mockResolvedValue(undefined);
+    vi.mocked(browserService.renderPage).mockResolvedValue({
+      html: '<html></html>',
+      imageCandidates: [],
+    });
+    vi.mocked(extractorService.extract).mockResolvedValue(mockExtracted);
+    vi.mocked(failures.logFailure).mockResolvedValue(undefined);
 
     const writeSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
 
-    await addCommand('https://example.com/', { ftp: true });
+    await addCommand('https://example.com/', defaultOptions);
 
-    expect(writeSpy).toHaveBeenCalledWith(
-      expect.stringContaining('https://example.com/')
+    expect(writeSpy).toHaveBeenCalledWith(expect.stringContaining('https://example.com/'));
+  });
+
+  it('prints extracted recipe title on success', async () => {
+    vi.mocked(urlLib.parseUrl).mockReturnValue(new URL('https://example.com/'));
+    vi.mocked(urlLib.checkReachable).mockResolvedValue(undefined);
+    vi.mocked(browserService.renderPage).mockResolvedValue({
+      html: '<html></html>',
+      imageCandidates: [],
+    });
+    vi.mocked(extractorService.extract).mockResolvedValue(mockExtracted);
+    vi.mocked(failures.logFailure).mockResolvedValue(undefined);
+
+    const writeSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
+
+    await addCommand('https://example.com/', defaultOptions);
+
+    expect(writeSpy).toHaveBeenCalledWith(expect.stringContaining('Pasta Carbonara'));
+  });
+
+  it('calls renderPage with the validated URL', async () => {
+    vi.mocked(urlLib.parseUrl).mockReturnValue(new URL('https://example.com/recipe'));
+    vi.mocked(urlLib.checkReachable).mockResolvedValue(undefined);
+    vi.mocked(browserService.renderPage).mockResolvedValue({
+      html: '<html></html>',
+      imageCandidates: [],
+    });
+    vi.mocked(extractorService.extract).mockResolvedValue(mockExtracted);
+    vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
+
+    await addCommand('https://example.com/recipe', defaultOptions);
+
+    expect(browserService.renderPage).toHaveBeenCalledWith('https://example.com/recipe');
+  });
+
+  it('calls extract with the rendered html and URL', async () => {
+    vi.mocked(urlLib.parseUrl).mockReturnValue(new URL('https://example.com/'));
+    vi.mocked(urlLib.checkReachable).mockResolvedValue(undefined);
+    vi.mocked(browserService.renderPage).mockResolvedValue({
+      html: '<html>rendered</html>',
+      imageCandidates: [],
+    });
+    vi.mocked(extractorService.extract).mockResolvedValue(mockExtracted);
+    vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
+
+    await addCommand('https://example.com/', defaultOptions);
+
+    expect(extractorService.extract).toHaveBeenCalledWith(
+      '<html>rendered</html>',
+      'https://example.com/'
+    );
+  });
+
+  it('calls logFailure and rethrows when renderPage throws', async () => {
+    vi.mocked(urlLib.parseUrl).mockReturnValue(new URL('https://example.com/'));
+    vi.mocked(urlLib.checkReachable).mockResolvedValue(undefined);
+    vi.mocked(browserService.renderPage).mockRejectedValue(
+      new UserError('Failed to load page: timeout')
+    );
+    vi.mocked(failures.logFailure).mockResolvedValue(undefined);
+
+    await expect(addCommand('https://example.com/', defaultOptions)).rejects.toThrow(UserError);
+    expect(failures.logFailure).toHaveBeenCalledWith(
+      'https://example.com/',
+      expect.stringContaining('Failed to load page')
+    );
+  });
+
+  it('calls logFailure and rethrows when extract throws', async () => {
+    vi.mocked(urlLib.parseUrl).mockReturnValue(new URL('https://example.com/'));
+    vi.mocked(urlLib.checkReachable).mockResolvedValue(undefined);
+    vi.mocked(browserService.renderPage).mockResolvedValue({
+      html: '<html></html>',
+      imageCandidates: [],
+    });
+    vi.mocked(extractorService.extract).mockRejectedValue(
+      new UserError('Failed to extract after 2 attempts')
+    );
+    vi.mocked(failures.logFailure).mockResolvedValue(undefined);
+
+    await expect(addCommand('https://example.com/', defaultOptions)).rejects.toThrow(UserError);
+    expect(failures.logFailure).toHaveBeenCalledWith(
+      'https://example.com/',
+      expect.stringContaining('Failed to extract')
     );
   });
 
@@ -28,8 +136,8 @@ describe('addCommand', () => {
       throw new UserError('Invalid URL: "not-a-url"');
     });
 
-    await expect(addCommand('not-a-url', { ftp: true })).rejects.toThrow(UserError);
-    await expect(addCommand('not-a-url', { ftp: true })).rejects.toThrow('Invalid URL');
+    await expect(addCommand('not-a-url', defaultOptions)).rejects.toThrow(UserError);
+    await expect(addCommand('not-a-url', defaultOptions)).rejects.toThrow('Invalid URL');
   });
 
   it('throws UserError when URL is unreachable', async () => {
@@ -37,16 +145,62 @@ describe('addCommand', () => {
     vi.mocked(urlLib.checkReachable).mockRejectedValue(
       new UserError('URL is unreachable: ECONNREFUSED')
     );
+    vi.mocked(failures.logFailure).mockResolvedValue(undefined);
 
-    await expect(addCommand('https://example.com/', { ftp: true })).rejects.toThrow(UserError);
-    await expect(addCommand('https://example.com/', { ftp: true })).rejects.toThrow('unreachable');
+    await expect(addCommand('https://example.com/', defaultOptions)).rejects.toThrow('unreachable');
+  });
+
+  it('calls logFailure when URL is unreachable (per spec)', async () => {
+    vi.mocked(urlLib.parseUrl).mockReturnValue(new URL('https://example.com/'));
+    vi.mocked(urlLib.checkReachable).mockRejectedValue(
+      new UserError('URL is unreachable: ECONNREFUSED')
+    );
+    vi.mocked(failures.logFailure).mockResolvedValue(undefined);
+
+    await expect(addCommand('https://example.com/', defaultOptions)).rejects.toThrow(UserError);
+    expect(failures.logFailure).toHaveBeenCalledWith(
+      'https://example.com/',
+      expect.stringContaining('unreachable')
+    );
+  });
+
+  it('rethrows the original error even when logFailure itself throws', async () => {
+    vi.mocked(urlLib.parseUrl).mockReturnValue(new URL('https://example.com/'));
+    vi.mocked(urlLib.checkReachable).mockResolvedValue(undefined);
+    vi.mocked(browserService.renderPage).mockResolvedValue({
+      html: '<html></html>',
+      imageCandidates: [],
+    });
+    const originalError = new UserError('Failed to extract after 2 attempts');
+    vi.mocked(extractorService.extract).mockRejectedValue(originalError);
+    vi.mocked(failures.logFailure).mockRejectedValue(new Error('ENOSPC: no space left on device'));
+
+    const thrown = await addCommand('https://example.com/', defaultOptions).catch((e) => e);
+    expect(thrown).toBe(originalError);
+  });
+
+  it('does not call logFailure for URL validation errors (before extraction)', async () => {
+    vi.mocked(urlLib.parseUrl).mockImplementation(() => {
+      throw new UserError('Invalid URL');
+    });
+    vi.mocked(failures.logFailure).mockResolvedValue(undefined);
+
+    await expect(addCommand('bad-url', defaultOptions)).rejects.toThrow(UserError);
+    expect(failures.logFailure).not.toHaveBeenCalled();
   });
 
   it('does not throw when --no-ftp is passed (ftp: false)', async () => {
     vi.mocked(urlLib.parseUrl).mockReturnValue(new URL('https://example.com/'));
     vi.mocked(urlLib.checkReachable).mockResolvedValue(undefined);
+    vi.mocked(browserService.renderPage).mockResolvedValue({
+      html: '<html></html>',
+      imageCandidates: [],
+    });
+    vi.mocked(extractorService.extract).mockResolvedValue(mockExtracted);
     vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
 
-    await expect(addCommand('https://example.com/', { ftp: false })).resolves.toBeUndefined();
+    await expect(
+      addCommand('https://example.com/', { ftp: false, images: true })
+    ).resolves.toBeUndefined();
   });
 });
