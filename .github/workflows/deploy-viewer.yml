@@ -51,5 +51,5 @@ jobs:
         run: |
           echo "machine $FTP_HOST login $FTP_USER password $FTP_PASS" > ~/.netrc
           chmod 600 ~/.netrc
-          lftp -e "set ftp:ssl-allow no; mirror --reverse --verbose ./deploy/ /public/; quit" ftp://$FTP_HOST
+          lftp -e "set ftp:ssl-allow no; set ftp:passive-mode on; set ftp:use-pasv-address no; set net:timeout 30; set net:max-retries 2; mirror --reverse --verbose ./deploy/ /public/; quit" ftp://$FTP_HOST
           rm ~/.netrc
