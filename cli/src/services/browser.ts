@@ -1,9 +1,12 @@
 import puppeteer from 'puppeteer';
 import { UserError } from '../lib/errors.js';
+import { extractCandidates, type ImageCandidate } from './images.js';
+
+export type { ImageCandidate };
 
 export interface PageResult {
   html: string;
-  imageCandidates: string[]; // populated in FR-11; always empty for FR-2
+  imageCandidates: ImageCandidate[];
 }
 
 const USER_AGENT =
@@ -38,7 +41,14 @@ export async function renderPage(url: string): Promise<PageResult> {
       throw new UserError(`Failed to retrieve page content: ${msg}`);
     }
 
-    return { html, imageCandidates: [] };
+    let imageCandidates: ImageCandidate[] = [];
+    try {
+      imageCandidates = await extractCandidates(page);
+    } catch {
+      // non-fatal — image discovery must never crash the browser session
+    }
+
+    return { html, imageCandidates };
   } finally {
     if (browser) {
       await browser.close().catch(() => {

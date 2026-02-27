@@ -14,6 +14,7 @@ vi.mock('../services/extractor.js');
 vi.mock('../services/storage.js');
 vi.mock('../lib/failures.js');
 vi.mock('../services/ftp.js');
+vi.mock('../services/images.js');
 
 const defaultOptions = { ftp: true, images: true };
 
