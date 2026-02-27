@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 2,
+  "id": "e7e91ad2-2d58-42f8-8e6d-1f183f9408b5",
+  "slug": "ginger-bug-soda-master-recipe-make-any-flavor-soda",
+  "title": "Ginger Bug Soda Master Recipe (Make Any Flavor Soda)",
+  "description": "Use this ginger bug soda master recipe to brew any flavor natural soda at home. This recipe controls sugar content to achieve the lowest possible ABV (below 1%), while still maintaining good carbonation.",
+  "sourceUrl": "https://cultured.guru/blog/ginger-bug-soda-master-recipe-make-any-flavor-soda",
+  "originalServings": 2500,
+  "servings": 4,
+  "prepTime": "30 minutes",
+  "cookTime": "unknown",
+  "tags": [
+    "drink",
+    "vegan",
+    "dairy-free",
+    "nut-free",
+    "quick"
+  ],
+  "images": [],
+  "ingredients": [
+    {
+      "quantity": "16",
+      "item": "g ginger bug"
+    },
+    {
+      "quantity": "48",
+      "item": "g fruit"
+    },
+    {
+      "quantity": "40",
+      "item": "ml citrus juice"
+    },
+    {
+      "quantity": "280",
+      "item": "ml water"
+    },
+    {
+      "quantity": "16",
+      "item": "g organic cane sugar"
+    }
+  ],
+  "steps": [
+    "Ensure you have an active bubbly ginger bug culture ready before starting.",
+    "Wash your fermentation equipment thoroughly and gather all ingredients.",
+    "Measure out the required amounts of sugar and fruit using a scale.",
+    "Add the sugar, fruit, citrus juice, and water to a large pot.",
+    "Bring the mixture to a boil, then reduce heat and simmer for about 15 minutes.",
+    "Remove from heat and strain off all fruit pieces using a colander.",
+    "Carefully pour the mixture into clean glass jars, cover with cloth and rubber band, and allow to cool completely.",
+    "Once cooled, add the ginger bug to the jars and replace the cloth lid for primary fermentation.",
+    "Primary ferment for about 2 to 3 days at room temperature.",
+    "Wash your bottling equipment including bottle, strainer, and funnel.",
+    "Strain off all ginger pieces from the primary fermentation mixture.",
+    "Pour the strained mixture into pressure-safe bottles through a funnel, leaving only about 1/2 to 1 inch of headspace.",
+    "Close and secure the bottle lid, making sure the metal closure snaps shut.",
+    "Allow secondary fermentation and carbonation to proceed for about 48 hours.",
+    "If your home is warm, check the carbonation level at 24 hours; if cool, allow longer for secondary fermentation to complete."
+  ],
+  "createdAt": "2026-02-27T10:22:06.577Z"
+}
