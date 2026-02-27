@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# recipe — wrapper for the recipe-extractor CLI
+# Usage: recipe add <url> [options]
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+exec node "$SCRIPT_DIR/cli/dist/index.js" "$@"

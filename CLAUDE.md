@@ -24,6 +24,8 @@ To run the CLI during development:
 node --loader tsx src/index.ts add <url>
 # or after build:
 node dist/index.js add <url>
+# or via the global wrapper (after symlinking recipe → /usr/local/bin/recipe):
+recipe add <url>
 ```
 
 ## Dev commands (run from `viewer/`)
@@ -55,7 +57,7 @@ FTP_PASS=
 FTP_REMOTE_DATA_PATH=/data/recipes/
 ```
 
-`dotenv/config` is loaded at the top of `index.ts` — the `.env` file must be in the directory where the CLI is invoked (project root).
+`dotenv` is loaded in `index.ts` and resolves `.env` relative to the script file's location (not `cwd`), so the CLI works from any directory.
 
 ## Branch convention
 
@@ -102,6 +104,8 @@ cli/src/
   services/
     browser.ts          # Puppeteer CDP: renderPage() → { html, imageCandidates }
     extractor.ts        # Claude API: extract() → ExtractedRecipe
+    storage.ts          # saveRecipe() / updateRecipeImages() → data/recipes/
+    ftp.ts              # syncRecipe(id) → uploads to Hostinger via basic-ftp
   lib/
     errors.ts           # UserError class
     failures.ts         # logFailure() → logs/failures.log
@@ -120,22 +124,13 @@ cli/src/
 | FR-3 | Normalize to 4 servings | Included in FR-2 Claude prompt |
 | FR-4 | Auto-tag | Included in FR-2 Claude prompt |
 | FR-5 | File-based DB storage | Done (PR #24) |
-| FR-6 | FTP sync on add | Pending |
+| FR-6 | FTP sync on add | Done (PR #26) |
 | FR-7 | Browse collection (viewer) | In PR #25 |
 | FR-8 | View recipe detail (viewer) | Pending |
 | FR-9 | Rescale servings (viewer) | Pending |
 | FR-10 | Deploy viewer on PR merge | Pending |
-| FR-11 | Extract and store images | Pending |
-
-## What FR-5 must implement
-
-`storage.ts` service — called from `add.ts` after `extract()` succeeds:
-- Generate UUID v4 for `recipe.id`
-- Generate `slug` from `title` (kebab-case, lowercase)
-- Atomic write: `data/recipes/<uuid>.json.tmp` → rename to `data/recipes/<uuid>.json`
-- Append entry to `data/recipes/index.json`
-- Check for duplicate `sourceUrl` in `index.json` before writing; prompt user to overwrite or skip
-- Schema version 2 (already defined in `types.ts`)
+| FR-11 | Extract and store images | In PR #29 |
+| FR-12 | Backfill images for existing recipes | In PR #30 |
 
 ## What to avoid
 

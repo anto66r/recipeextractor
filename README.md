@@ -34,17 +34,30 @@ cp .env.example .env
 # Edit .env and add your ANTHROPIC_API_KEY
 ```
 
+## Global install
+
+A `recipe` wrapper script lives at the project root. Symlink it once to use `recipe` from anywhere:
+
+```bash
+ln -sf /path/to/recipeextractor/recipe /usr/local/bin/recipe
+# then build the CLI once:
+cd cli && npm run build
+```
+
 ## Usage
 
 ```bash
 # Extract a recipe
-npm run dev add https://www.example.com/pasta-carbonara
+recipe add https://www.example.com/pasta-carbonara
 
 # Skip FTP upload (offline mode)
-npm run dev add https://www.example.com/pasta-carbonara --no-ftp
+recipe add https://www.example.com/pasta-carbonara --no-ftp
 
 # Override or add tags
-npm run dev add https://www.example.com/pasta-carbonara --tags "Italian,dinner,quick"
+recipe add https://www.example.com/pasta-carbonara --tags "Italian,dinner,quick"
+
+# During development (no build step)
+cd cli && npm run dev add https://www.example.com/pasta-carbonara
 ```
 
 On success the extracted recipe JSON is printed to stdout. Failures are logged to `logs/failures.log`.
@@ -108,13 +121,16 @@ All tests use mocked Puppeteer and mocked Anthropic SDK — no browser is launch
 
 ```
 recipeextractor/
+├── recipe                  # Global wrapper script (symlink to /usr/local/bin/recipe)
 ├── cli/                    # CLI tool (Node.js/TypeScript)
 │   ├── src/
 │   │   ├── index.ts        # Entry point
 │   │   ├── commands/add.ts # `recipe add` handler
 │   │   ├── services/
 │   │   │   ├── browser.ts  # Puppeteer page rendering
-│   │   │   └── extractor.ts# Claude AI extraction
+│   │   │   ├── extractor.ts# Claude AI extraction
+│   │   │   ├── storage.ts  # JSON file persistence
+│   │   │   └── ftp.ts      # FTP sync to Hostinger
 │   │   └── lib/
 │   │       ├── schema.ts   # Zod validation schemas
 │   │       ├── failures.ts # Failure log writer
@@ -122,7 +138,9 @@ recipeextractor/
 │   │       ├── logger.ts   # stdout/stderr helpers
 │   │       └── url.ts      # URL validation
 │   └── package.json
-├── viewer/                 # Recipe viewer (PHP + React) — coming soon
+├── viewer/                 # Recipe viewer (PHP + React/Vite)
+│   ├── src/                # React frontend
+│   └── php/                # PHP API endpoints
 ├── data/
 │   ├── recipes/            # JSON recipe files + index.json
 │   └── images/             # Downloaded recipe images
@@ -142,10 +160,11 @@ recipeextractor/
 | FR-2 | Extract recipe via Claude AI | Done |
 | FR-3 | Normalize to 4 servings | Done (part of FR-2) |
 | FR-4 | Auto-tag recipes | Done (part of FR-2) |
-| FR-5 | Store in file-based DB | Pending |
-| FR-6 | Sync to Hostinger via FTP | Pending |
-| FR-7 | Browse recipe collection | Pending |
+| FR-5 | Store in file-based DB | Done |
+| FR-6 | Sync to Hostinger via FTP | Done |
+| FR-7 | Browse recipe collection | In progress |
 | FR-8 | View recipe detail | Pending |
 | FR-9 | Rescale servings in viewer | Pending |
 | FR-10 | Deploy viewer on PR merge | Pending |
-| FR-11 | Extract and store recipe images | Pending |
+| FR-11 | Extract and store recipe images | In progress |
+| FR-12 | Backfill images for existing recipes | In progress |
