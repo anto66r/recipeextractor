@@ -34,6 +34,12 @@ export async function readIndex(): Promise<RecipeIndex[]> {
   return JSON.parse(raw) as RecipeIndex[];
 }
 
+export async function readRecipe(id: string): Promise<Recipe> {
+  const filePath = resolve(DATA_DIR, `${id}.json`);
+  const raw = await readFile(filePath, 'utf8');
+  return JSON.parse(raw) as Recipe;
+}
+
 async function writeIndex(entries: RecipeIndex[]): Promise<void> {
   const tmp = `${INDEX_PATH}.tmp`;
   await writeFile(tmp, JSON.stringify(entries, null, 2), 'utf8');

@@ -8,6 +8,7 @@ import { Command } from 'commander';
 // This works regardless of the working directory when the CLI is invoked
 config({ path: resolve(dirname(fileURLToPath(import.meta.url)), '../../.env') });
 import { addCommand } from './commands/add.js';
+import { backfillImagesCommand } from './commands/backfill-images.js';
 import { UserError } from './lib/errors.js';
 import { error as logError } from './lib/logger.js';
 
@@ -25,6 +26,14 @@ program
   .option('--no-ftp', 'Skip FTP upload after saving')
   .option('--no-images', 'Skip image extraction')
   .action(addCommand);
+
+program
+  .command('backfill-images')
+  .description('Fetch and store images for recipes that are missing them')
+  .option('--dry-run', 'Report which recipes would be updated without writing files')
+  .option('--id <uuid>', 'Target a single recipe by UUID')
+  .option('--no-ftp', 'Skip FTP upload after saving')
+  .action(backfillImagesCommand);
 
 // parseAsync handles async action handlers; UserError bubbles up here for a clean exit
 program.parseAsync().catch((e: unknown) => {
