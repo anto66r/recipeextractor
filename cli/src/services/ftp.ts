@@ -37,7 +37,8 @@ export async function syncRecipe(id: string): Promise<void> {
   const client = new Client();
 
   try {
-    await client.access({ host, user, password, secure: true, secureOptions: { rejectUnauthorized: false } });
+    await client.access({ host, user, password, secure: false });
+    client.ftp.passiveIpOverride = host;
     await client.ensureDir(remotePath);
 
     const recipeFile = resolve(DATA_DIR, `${id}.json`);

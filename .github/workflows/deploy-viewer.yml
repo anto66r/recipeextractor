@@ -50,9 +50,7 @@ jobs:
           FTP_PASS: ${{ secrets.FTP_PASS }}
         run: |
           lftp -e "
-            set ssl:verify-certificate no
-            set ssl:verify-hostname no
-            open -u \"$FTP_USER,$FTP_PASS\" ftps://$FTP_HOST
+            open -u \"$FTP_USER,$FTP_PASS\" ftp://$FTP_HOST
             mirror --reverse --verbose ./deploy/ /public/
             quit
           "
