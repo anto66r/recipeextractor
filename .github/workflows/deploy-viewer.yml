@@ -35,7 +35,7 @@ jobs:
       - name: Prepare deployment package
         run: |
           mkdir -p deploy/api
-          cp -r viewer/dist deploy/
+          cp -r viewer/dist/. deploy/
           cp viewer/php/index.php deploy/index.php
           cp viewer/php/api/recipes.php viewer/php/api/recipe.php viewer/php/api/image.php deploy/api/
           cp viewer/.htaccess deploy/.htaccess
