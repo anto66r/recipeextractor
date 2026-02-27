@@ -1,0 +1,102 @@
+{
+  "schemaVersion": 2,
+  "id": "1668fc30-0102-4093-a0c6-8001a511245e",
+  "slug": "instant-pot-coconut-chicken-curry",
+  "title": "Instant Pot Coconut Chicken Curry",
+  "description": "Easy and healthy coconut chicken curry made in an Instant Pot in just 30 minutes. This simple Indian curry is made with ginger, garlic, onions, and aromatic spices, finished with creamy coconut milk. It's dairy-free, gluten-free, and perfect for serving with basmati rice or naan.",
+  "sourceUrl": "https://pipingpotcurry.com/coconut-chicken-curry-instant-pot/",
+  "originalServings": 4,
+  "servings": 4,
+  "prepTime": "5 minutes",
+  "cookTime": "25 minutes",
+  "tags": [
+    "dinner",
+    "Indian",
+    "quick",
+    "dairy-free",
+    "gluten-free"
+  ],
+  "images": [],
+  "ingredients": [
+    {
+      "quantity": "1",
+      "item": "tbsp Ghee or Oil"
+    },
+    {
+      "quantity": "1",
+      "item": "tsp Cumin seeds (Jeera), optional"
+    },
+    {
+      "quantity": "240",
+      "item": "ml Onions, yellow diced"
+    },
+    {
+      "quantity": "0.5",
+      "item": "tbsp Ginger, paste or grated"
+    },
+    {
+      "quantity": "0.5",
+      "item": "tbsp Garlic, paste or minced"
+    },
+    {
+      "quantity": "240",
+      "item": "ml Tomato puree"
+    },
+    {
+      "quantity": "450",
+      "item": "g Chicken thighs, skinless and boneless, cut into 1-1.5 inch pieces"
+    },
+    {
+      "quantity": "60",
+      "item": "ml Water"
+    },
+    {
+      "quantity": "240",
+      "item": "ml Coconut Milk, canned, full-fat, unsweetened"
+    },
+    {
+      "quantity": "1",
+      "item": "tsp Garam Masala"
+    },
+    {
+      "quantity": "1",
+      "item": "tbsp Lime juice"
+    },
+    {
+      "quantity": "to taste",
+      "item": "Cilantro, to garnish"
+    },
+    {
+      "quantity": "1",
+      "item": "tsp Ground Cumin (Jeera powder)"
+    },
+    {
+      "quantity": "0.5",
+      "item": "tsp Ground Turmeric (Haldi powder)"
+    },
+    {
+      "quantity": "1",
+      "item": "tsp Kashmiri red chili powder, or paprika"
+    },
+    {
+      "quantity": "1",
+      "item": "tsp Coriander powder (Dhaniya powder)"
+    },
+    {
+      "quantity": "1",
+      "item": "tsp Salt"
+    }
+  ],
+  "steps": [
+    "Set the Instant Pot to sauté mode and let it heat, then add ghee or oil and cumin seeds, sautéing for 30 seconds until fragrant.",
+    "Add diced onions, ginger paste, and garlic paste, sautéing for about 3 minutes until the onions turn golden brown.",
+    "Add tomato puree and all the spices, stirring well and sautéing for 2-3 minutes to blend the flavors.",
+    "Add the chicken pieces to the pot, stirring and sautéing for 3-4 minutes to seal in the flavors.",
+    "Pour in the water and stir well, then press cancel to stop sautéing mode and close the lid with the vent in sealing position.",
+    "Start the Instant Pot in manual or pressure cook mode on high pressure for 4 minutes.",
+    "When the Instant Pot beeps, quick release the pressure manually and carefully open the lid.",
+    "Stir in the coconut milk and garam masala, then simmer on sauté mode for 4-5 minutes until the sauce reaches your desired thickness.",
+    "Stir in the lime juice and garnish generously with fresh cilantro, then serve immediately over basmati rice or with naan bread."
+  ],
+  "createdAt": "2026-02-27T12:06:58.969Z"
+}
