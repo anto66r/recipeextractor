@@ -46,7 +46,7 @@ if (php_sapi_name() === 'cli-server' && is_file(__DIR__ . $uri)) {
 }
 
 // Route API requests to the correct handler (explicit allowlist to prevent path traversal)
-$allowedEndpoints = ['recipes', 'recipe', 'image', 'add-recipe'];
+$allowedEndpoints = ['recipes', 'recipe', 'image', 'add-recipe', 'set-images'];
 
 if (str_starts_with($uri, '/api/')) {
     $segment = substr($uri, strlen('/api/'));

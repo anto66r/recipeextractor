@@ -101,9 +101,11 @@ cli/src/
   index.ts              # Entry point — Commander setup, dotenv, UserError boundary
   commands/
     add.ts              # `recipe add <url>` handler
+    set-images.ts       # `recipe set-images <uuid> <url...>` handler
   services/
     browser.ts          # Puppeteer CDP: renderPage() → { html, imageCandidates }
     extractor.ts        # Claude API: extract() → ExtractedRecipe
+    images.ts           # downloadImages(urls, id, name) → data/images/<uuid>/
     storage.ts          # saveRecipe() / updateRecipeImages() → data/recipes/
     ftp.ts              # syncRecipe(id) → uploads to Hostinger via basic-ftp
   lib/
@@ -132,6 +134,7 @@ cli/src/
 | FR-11 | Extract and store images | In PR #29 |
 | FR-12 | Backfill images for existing recipes | In PR #30 |
 | FR-13 | Submit Recipe URL from Viewer | In PR #33 |
+| FR-14 | Manually Add Image URLs to Recipe | In PR #34 |
 
 ## What to avoid
 

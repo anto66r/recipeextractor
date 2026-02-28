@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { randomUUID } from 'node:crypto';
 import { createInterface } from 'node:readline';
 import type { ExtractedRecipe } from '../lib/schema.js';
-import type { Recipe, RecipeIndex } from '../types.js';
+import type { Recipe, RecipeIndex, RecipeImage } from '../types.js';
 import { UserError } from '../lib/errors.js';
 import { info } from '../lib/logger.js';
 
@@ -117,4 +117,23 @@ export async function saveRecipe(
 
   info(`Saved: ${recipe.title} → data/recipes/${id}.json`);
   return recipe;
+}
+
+export async function updateRecipeImages(id: string, images: RecipeImage[]): Promise<void> {
+  const filePath = resolve(DATA_DIR, `${id}.json`);
+  if (!existsSync(filePath)) {
+    throw new UserError(`Recipe not found: ${id}`);
+  }
+
+  const raw = await readFile(filePath, 'utf8');
+  const recipe = JSON.parse(raw) as Recipe;
+  recipe.images = images;
+  await atomicWriteRecipe(id, recipe);
+
+  const index = await readIndex();
+  const entry = index.find((e) => e.id === id);
+  if (entry) {
+    entry.images = images;
+    await writeIndex(index);
+  }
 }
