@@ -396,7 +396,7 @@ foreach ($index as $entry) {
 try {
     $html = fetchHtml($url);
 } catch (RuntimeException $e) {
-    jsonError(500, $e->getMessage());
+    jsonError(422, $e->getMessage());
 }
 
 // Extract via Claude (retry once on failure, mirrors CLI behavior)
@@ -415,7 +415,7 @@ for ($attempt = 1; $attempt <= 2; $attempt++) {
 }
 
 if ($extracted === null) {
-    jsonError(500, "Failed to extract recipe after 2 attempts. Last error: {$lastError}");
+    jsonError(422, "Failed to extract recipe after 2 attempts. Last error: {$lastError}");
 }
 
 // Save recipe
@@ -443,14 +443,14 @@ $recipe = [
 
 // Ensure recipes directory exists
 if (!is_dir($recipesDir) && !mkdir($recipesDir, 0755, true)) {
-    jsonError(500, 'Failed to create recipes directory');
+    jsonError(503, 'Failed to create recipes directory');
 }
 
 // Write recipe file
 try {
     atomicWrite($recipesDir . '/' . $id . '.json', json_encode($recipe, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
 } catch (RuntimeException $e) {
-    jsonError(500, 'Failed to save recipe: ' . $e->getMessage());
+    jsonError(503, 'Failed to save recipe: ' . $e->getMessage());
 }
 
 // Update index
