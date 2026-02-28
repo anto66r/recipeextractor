@@ -1,5 +1,10 @@
 Options -Indexes
 
+# Block direct access to .env (API key must not be served over HTTP)
+<Files ".env">
+    Require all denied
+</Files>
+
 # Prefer index.php as directory index so all SPA routes go through the PHP
 # router — prevents stale server-level caching of index.html for the root URL
 DirectoryIndex index.php index.html

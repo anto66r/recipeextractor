@@ -10,6 +10,34 @@
  * Local dev: php -S localhost:8080 -t viewer/php viewer/php/router.php
  */
 
+// Load .env file into environment (skips vars already set by the OS).
+// Tries same directory first (production), then two levels up (local dev / project root).
+(function () {
+    $candidates = [__DIR__ . '/.env', __DIR__ . '/../../.env'];
+    foreach ($candidates as $envFile) {
+        if (!is_file($envFile)) {
+            continue;
+        }
+        $lines = file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+        if ($lines === false) {
+            continue;
+        }
+        foreach ($lines as $line) {
+            $line = trim($line);
+            if ($line === '' || $line[0] === '#' || !str_contains($line, '=')) {
+                continue;
+            }
+            [$key, $val] = explode('=', $line, 2);
+            $key = trim($key);
+            $val = trim($val, " \t\"'");
+            if ($key !== '' && getenv($key) === false) {
+                putenv("{$key}={$val}");
+            }
+        }
+        break; // Stop after the first .env found
+    }
+})();
+
 $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
 
 // Let the built-in PHP server serve real files (CSS/JS assets)

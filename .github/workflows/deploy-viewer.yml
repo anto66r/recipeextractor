@@ -39,6 +39,7 @@ jobs:
           cp viewer/php/index.php deploy/index.php
           cp viewer/php/api/*.php deploy/api/
           cp viewer/.htaccess deploy/.htaccess
+          echo "ANTHROPIC_API_KEY=${{ secrets.ANTHROPIC_API_KEY }}" > deploy/.env
 
       - name: Install lftp
         run: sudo apt-get install -y lftp
