@@ -37,7 +37,7 @@ jobs:
           mkdir -p deploy/api
           cp -r viewer/dist/. deploy/
           cp viewer/php/index.php deploy/index.php
-          cp viewer/php/api/recipes.php viewer/php/api/recipe.php viewer/php/api/image.php deploy/api/
+          cp viewer/php/api/*.php deploy/api/
           cp viewer/.htaccess deploy/.htaccess
 
       - name: Install lftp
