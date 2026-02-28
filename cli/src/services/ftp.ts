@@ -1,13 +1,18 @@
 import { Client } from 'basic-ftp';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { existsSync } from 'node:fs';
 import { UserError } from '../lib/errors.js';
 import { info } from '../lib/logger.js';
 
-// Same path derivation pattern as storage.ts
 const DATA_DIR = resolve(
   dirname(fileURLToPath(import.meta.url)),
   '../../../data/recipes'
+);
+
+const IMAGES_DIR = resolve(
+  dirname(fileURLToPath(import.meta.url)),
+  '../../../data/images'
 );
 
 interface FtpCredentials {
@@ -34,6 +39,13 @@ function getCredentials(): FtpCredentials {
 
 export async function syncRecipe(id: string): Promise<void> {
   const { host, user, password, remotePath } = getCredentials();
+
+  if (!remotePath.includes('/recipes/')) {
+    throw new UserError(
+      'FTP_REMOTE_DATA_PATH must contain "/recipes/" (e.g. /public_html/data/recipes/). Check your .env.'
+    );
+  }
+
   const client = new Client();
 
   try {
@@ -49,6 +61,15 @@ export async function syncRecipe(id: string): Promise<void> {
 
     await client.uploadFrom(indexFile, 'index.json');
     info(`FTP: uploaded index.json`);
+
+    // Upload images dir if it exists locally
+    const localImagesDir = resolve(IMAGES_DIR, id);
+    if (existsSync(localImagesDir)) {
+      const remoteImagesPath = remotePath.replace('/recipes/', '/images/') + id + '/';
+      await client.ensureDir(remoteImagesPath);
+      await client.uploadFromDir(localImagesDir, remoteImagesPath);
+      info(`FTP: uploaded images/${id}/`);
+    }
   } catch (e: unknown) {
     if (e instanceof UserError) throw e;
     const msg = e instanceof Error ? e.message : String(e);

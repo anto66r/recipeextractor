@@ -8,6 +8,7 @@ import { Command } from 'commander';
 // This works regardless of the working directory when the CLI is invoked
 config({ path: resolve(dirname(fileURLToPath(import.meta.url)), '../../.env') });
 import { addCommand } from './commands/add.js';
+import { setImagesCommand } from './commands/set-images.js';
 import { UserError } from './lib/errors.js';
 import { error as logError } from './lib/logger.js';
 
@@ -25,6 +26,12 @@ program
   .option('--no-ftp', 'Skip FTP upload after saving')
   .option('--no-images', 'Skip image extraction')
   .action(addCommand);
+
+program
+  .command('set-images <uuid> <url...>')
+  .description('Download and store image URLs for an existing recipe')
+  .option('--no-ftp', 'Skip FTP upload after saving')
+  .action(setImagesCommand);
 
 // parseAsync handles async action handlers; UserError bubbles up here for a clean exit
 program.parseAsync().catch((e: unknown) => {
