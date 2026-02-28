@@ -255,6 +255,15 @@ export default function RecipePage() {
             </ul>
           </section>
 
+          {recipe.images.length > 1 && (
+            <RecipeImageComponent
+              recipeId={recipe.id}
+              images={recipe.images}
+              index={1}
+              className={styles.inlineImage}
+            />
+          )}
+
           <section className={styles.section}>
             <h2>Instructions</h2>
             <ol className={styles.steps}>

@@ -24,6 +24,13 @@
   border-radius: var(--radius);
 }
 
+.inlineImage {
+  width: 100%;
+  max-height: 320px;
+  object-fit: cover;
+  border-radius: var(--radius);
+}
+
 .title {
   font-size: 2rem;
   line-height: 1.2;
