@@ -131,6 +131,7 @@ cli/src/
 | FR-10 | Deploy viewer on PR merge | Pending |
 | FR-11 | Extract and store images | In PR #29 |
 | FR-12 | Backfill images for existing recipes | In PR #30 |
+| FR-13 | Submit Recipe URL from Viewer | In PR #33 |
 
 ## What to avoid
 
