@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import type { RecipeIndex } from '../types';
 import RecipeCard from '../components/RecipeCard';
 import TagFilter from '../components/TagFilter';
@@ -94,6 +95,10 @@ export default function BrowsePage() {
           </>
         )}
       </main>
+
+      <Link to="/add" className={styles.fab} aria-label="Add recipe">
+        +
+      </Link>
     </div>
   );
 }
