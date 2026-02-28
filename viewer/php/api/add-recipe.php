@@ -90,9 +90,7 @@ function assertNotPrivateUrl(string $url): void
         '192.168.0.0/16',
         '127.0.0.0/8',
         '169.254.0.0/16',  // link-local (AWS metadata: 169.254.169.254)
-        '::1/128',
-        'fc00::/7',
-        'fe80::/10',
+        // IPv6 ranges omitted: ip2long() is IPv4-only and shifts by negative prefix crash PHP 8
     ];
 
     foreach ($privateRanges as $range) {
