@@ -344,6 +344,15 @@ function atomicWrite(string $path, string $content): void
 
 // ── Main handler ──────────────────────────────────────────────────────────────
 
+// Catch-all: converts uncaught PHP Errors/Exceptions to a visible 503 response
+// instead of letting LiteSpeed swallow them as an empty-body HTTP 500.
+set_exception_handler(function (Throwable $e) {
+    error_log('add-recipe uncaught: ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine());
+    http_response_code(503);
+    echo json_encode(['error' => 'Unexpected server error: ' . $e->getMessage()]);
+    exit;
+});
+
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     jsonError(405, 'Method not allowed');
 }
