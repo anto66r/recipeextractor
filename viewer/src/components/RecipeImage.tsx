@@ -4,7 +4,7 @@ import type { RecipeImage as RecipeImageType } from '../types';
 interface Props {
   recipeId: string;
   images: RecipeImageType[];
-  index?: 0 | 1;
+  index?: number;
   className?: string;
   loading?: 'eager' | 'lazy';
 }

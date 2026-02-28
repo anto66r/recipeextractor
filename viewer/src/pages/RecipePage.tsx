@@ -255,14 +255,15 @@ export default function RecipePage() {
             </ul>
           </section>
 
-          {recipe.images.length > 1 && (
+          {recipe.images.slice(1).map((_, i) => (
             <RecipeImageComponent
+              key={i + 1}
               recipeId={recipe.id}
               images={recipe.images}
-              index={1}
+              index={i + 1}
               className={styles.inlineImage}
             />
-          )}
+          ))}
 
           <section className={styles.section}>
             <h2>Instructions</h2>
