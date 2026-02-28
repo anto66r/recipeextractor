@@ -1,5 +1,9 @@
 Options -Indexes
 
+# Prefer index.php as directory index so all SPA routes go through the PHP
+# router — prevents stale server-level caching of index.html for the root URL
+DirectoryIndex index.php index.html
+
 RewriteEngine On
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteRule ^ index.php [QSA,L]

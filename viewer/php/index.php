@@ -37,7 +37,7 @@ if (str_starts_with($uri, '/api/')) {
 }
 
 // Serve the Vite-built SPA shell for all other routes
-$indexPath = __DIR__ . '/dist/index.html';
+$indexPath = __DIR__ . '/index.html';
 if (!is_file($indexPath)) {
     http_response_code(503);
     echo 'Viewer not built. Run: npm run build inside viewer/';
