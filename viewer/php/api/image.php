@@ -1,26 +1,30 @@
 <?php
 /**
- * GET /api/image?id=<uuid>&n=<positive integer>
+ * GET /api/image?id=<recipe-uuid>&f=<image-filename.jpg>
  * Streams a recipe image (JPEG) from the data directory.
  * Validates both parameters before constructing any file path.
+ *
+ * The filename is the UUID-based filename stored in the recipe JSON,
+ * which changes with every upload — providing natural cache busting.
  */
 
 header('Content-Type: text/plain; charset=utf-8');
 
 $id = $_GET['id'] ?? '';
-$n  = $_GET['n']  ?? '';
+$f  = $_GET['f']  ?? '';
 
-// Validate UUID v4
+// Validate recipe UUID v4
 if (!preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/', $id)) {
     http_response_code(400);
     echo 'Invalid id';
     exit;
 }
 
-// Validate image index (positive integer)
-if (!preg_match('/^[1-9][0-9]*$/', $n)) {
+// Validate image filename: UUID.jpg or legacy positional (0.jpg, 1.jpg)
+// No path separators or dots in the basename allowed.
+if (!preg_match('/^[0-9a-f-]+\.jpg$/i', $f) || str_contains($f, '..') || str_contains($f, '/')) {
     http_response_code(400);
-    echo 'Invalid n (must be a positive integer)';
+    echo 'Invalid f (must be a .jpg filename)';
     exit;
 }
 
@@ -32,7 +36,7 @@ if (!$dataDir) {
     exit;
 }
 
-$filePath = $dataDir . '/images/' . $id . '/' . $n . '.jpg';
+$filePath = $dataDir . '/images/' . $id . '/' . $f;
 
 if (!is_file($filePath)) {
     http_response_code(404);

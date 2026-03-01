@@ -2,6 +2,7 @@ import { writeFile, mkdir, rm } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { randomUUID } from 'node:crypto';
 import sharp from 'sharp';
 import type { RecipeImage } from '../types.js';
 import { UserError } from '../lib/errors.js';
@@ -70,7 +71,7 @@ export async function downloadImages(
       throw new UserError(`Failed to process image (${url}): ${msg}`);
     }
 
-    processed.push({ data, width, height, filename: `${i}.jpg`, alt: recipeName });
+    processed.push({ data, width, height, filename: `${randomUUID()}.jpg`, alt: recipeName });
   }
 
   // Phase 2: all images ready — clear old dir and write atomically

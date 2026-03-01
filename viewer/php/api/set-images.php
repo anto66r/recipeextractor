@@ -31,6 +31,15 @@ header('Content-Type: application/json; charset=utf-8');
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
+/** Generate a UUID v4 string for use as an image filename. */
+function generateImageId(): string
+{
+    $data    = random_bytes(16);
+    $data[6] = chr(ord($data[6]) & 0x0f | 0x40);
+    $data[8] = chr(ord($data[8]) & 0x3f | 0x80);
+    return vsprintf('%s%s-%s-%s-%s-%s%s%s', str_split(bin2hex($data), 4));
+}
+
 function jsonError(int $status, string $message): never
 {
     http_response_code($status);
@@ -219,7 +228,8 @@ if (isset($input['images']) && is_array($input['images'])) {
             if (empty($spec['filename']) || !is_string($spec['filename'])) {
                 jsonError(400, "images[{$i}]: existing spec requires a filename string");
             }
-            if (!preg_match('/^\d+\.jpg$/', $spec['filename'])) {
+            // Accept UUID filenames (new) or legacy positional names (0.jpg, 1.jpg)
+            if (!preg_match('/^[0-9a-f-]+\.jpg$/i', $spec['filename']) || str_contains($spec['filename'], '..') || str_contains($spec['filename'], '/')) {
                 jsonError(400, "images[{$i}]: invalid filename '{$spec['filename']}'");
             }
         } elseif ($type === 'url') {
@@ -311,25 +321,24 @@ foreach ($specs as $i => $spec) {
             if (!is_file($filePath)) {
                 throw new RuntimeException("Existing image not found on disk: {$filename}");
             }
-            $bytes = file_get_contents($filePath);
-            if ($bytes === false) {
-                throw new RuntimeException("Failed to read existing image: {$filename}");
-            }
             // Preserve metadata from current recipe; fall back to re-decoding dimensions
             $meta = $currentImages[$filename] ?? null;
             if ($meta && isset($meta['width'], $meta['height'])) {
                 $width  = (int)$meta['width'];
                 $height = (int)$meta['height'];
             } else {
-                // Decode to get dimensions (rare fallback)
+                $bytes  = file_get_contents($filePath);
+                if ($bytes === false) {
+                    throw new RuntimeException("Failed to read existing image: {$filename}");
+                }
                 $result = processImageToJpeg($bytes);
-                $bytes  = $result['data'];
                 $width  = $result['width'];
                 $height = $result['height'];
             }
+            // Keep the existing filename — no file write needed
             $processed[] = [
-                'data'     => $bytes,
-                'filename' => $i . '.jpg',
+                'data'     => null,   // null = no write, file already on disk
+                'filename' => $filename,
                 'alt'      => $recipeName,
                 'width'    => $width,
                 'height'   => $height,
@@ -339,7 +348,7 @@ foreach ($specs as $i => $spec) {
             $result = processImageToJpeg($bytes);
             $processed[] = [
                 'data'     => $result['data'],
-                'filename' => $i . '.jpg',
+                'filename' => generateImageId() . '.jpg',
                 'alt'      => $recipeName,
                 'width'    => $result['width'],
                 'height'   => $result['height'],
@@ -352,7 +361,7 @@ foreach ($specs as $i => $spec) {
             $result = processImageToJpeg($bytes);
             $processed[] = [
                 'data'     => $result['data'],
-                'filename' => $i . '.jpg',
+                'filename' => generateImageId() . '.jpg',
                 'alt'      => $recipeName,
                 'width'    => $result['width'],
                 'height'   => $result['height'],
@@ -363,12 +372,17 @@ foreach ($specs as $i => $spec) {
     }
 }
 
-// ── Phase 2: clear old image directory and write new images ───────────────────
+// ── Phase 2: delete unreferenced old files, write new images ──────────────────
+
+$keptFilenames = array_column($processed, 'filename');
 
 if (is_dir($recipeImagesDir)) {
+    // Delete old files that are no longer referenced
     $existing = glob($recipeImagesDir . '/*.jpg') ?: [];
-    foreach ($existing as $f) {
-        @unlink($f);
+    foreach ($existing as $existingFile) {
+        if (!in_array(basename($existingFile), $keptFilenames, true)) {
+            @unlink($existingFile);
+        }
     }
 } else {
     if (!mkdir($recipeImagesDir, 0755, true)) {
@@ -376,7 +390,11 @@ if (is_dir($recipeImagesDir)) {
     }
 }
 
+// Write only new images (existing images are already on disk)
 foreach ($processed as $img) {
+    if ($img['data'] === null) {
+        continue; // 'existing' type — file already on disk, nothing to write
+    }
     $filePath = $recipeImagesDir . '/' . $img['filename'];
     if (file_put_contents($filePath, $img['data']) === false) {
         jsonError(503, "Failed to write image: {$img['filename']}");

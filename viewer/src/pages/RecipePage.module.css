@@ -20,6 +20,7 @@
 .hero {
   width: 100%;
   aspect-ratio: 16 / 9;
+  max-height: 300px;
   object-fit: cover;
   border-radius: 12px;
   background: var(--color-tag-bg);

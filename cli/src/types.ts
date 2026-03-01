@@ -1,5 +1,5 @@
 export interface RecipeImage {
-  filename: string;   // "1.jpg" or "2.jpg"
+  filename: string;   // "<uuid>.jpg" — unique per image, used in URL for cache busting
   alt: string;
   width: number;
   height: number;

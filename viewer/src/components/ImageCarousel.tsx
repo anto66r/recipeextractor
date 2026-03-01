@@ -68,11 +68,11 @@ export default function ImageCarousel({ recipeId, images, onImagesChange }: Prop
 
   function enterEdit() {
     setItems(
-      images.map((img, i): ExistingItem => ({
+      images.map((img): ExistingItem => ({
         id: uid(),
         kind: 'existing',
         filename: img.filename,
-        previewSrc: `/api/image?id=${encodeURIComponent(recipeId)}&n=${i + 1}`,
+        previewSrc: `/api/image?id=${encodeURIComponent(recipeId)}&f=${encodeURIComponent(img.filename)}`,
         width: img.width,
         height: img.height,
         alt: img.alt,
@@ -210,8 +210,8 @@ export default function ImageCarousel({ recipeId, images, onImagesChange }: Prop
               )}
 
               <img
-                key={idx}
-                src={`/api/image?id=${encodeURIComponent(recipeId)}&n=${idx + 1}`}
+                key={images[idx].filename}
+                src={`/api/image?id=${encodeURIComponent(recipeId)}&f=${encodeURIComponent(images[idx].filename)}`}
                 alt={images[idx].alt}
                 className={styles.photo}
                 width={images[idx].width}

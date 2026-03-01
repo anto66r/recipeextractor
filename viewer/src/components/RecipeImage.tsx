@@ -54,7 +54,7 @@ export default function RecipeImage({
     return <Placeholder className={className} />;
   }
 
-  const src = `/api/image?id=${encodeURIComponent(recipeId)}&n=${index + 1}`;
+  const src = `/api/image?id=${encodeURIComponent(recipeId)}&f=${encodeURIComponent(imageData.filename)}`;
 
   return (
     <img
