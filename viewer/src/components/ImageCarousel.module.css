@@ -1,0 +1,277 @@
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.header {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.label {
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.editHint {
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+}
+
+.editBtn {
+  margin-left: auto;
+  background: none;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  font-size: 0.82rem;
+  padding: 3px 10px;
+  white-space: nowrap;
+}
+
+.editBtn:hover {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+.empty {
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+  margin: 0;
+}
+
+/* ── Carousel (view mode) ─────────────────────────────────────────────────── */
+
+.track {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-tag-bg, #f5f5f0);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.photo {
+  display: block;
+  width: 100%;
+  max-height: 480px;
+  object-fit: contain;
+}
+
+.arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(0, 0, 0, 0.35);
+  border: none;
+  border-radius: 4px;
+  color: #fff;
+  cursor: pointer;
+  font-size: 1.8rem;
+  line-height: 1;
+  padding: 6px 10px;
+  z-index: 1;
+  transition: background 0.15s;
+}
+
+.arrow:hover:not(:disabled) {
+  background: rgba(0, 0, 0, 0.6);
+}
+
+.arrow:disabled {
+  opacity: 0.25;
+  cursor: default;
+}
+
+.arrowLeft {
+  left: 8px;
+}
+
+.arrowRight {
+  right: 8px;
+}
+
+.dots {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-border);
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  transition: background 0.15s;
+}
+
+.dotActive {
+  background: var(--color-accent);
+}
+
+/* ── Edit mode ───────────────────────────────────────────────────────────── */
+
+.itemList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--color-tag-bg, #f5f5f0);
+  border-radius: var(--radius);
+  padding: 6px 8px;
+}
+
+.thumb {
+  width: 52px;
+  height: 40px;
+  object-fit: cover;
+  border-radius: 4px;
+  flex-shrink: 0;
+  background: var(--color-border);
+}
+
+.itemLabel {
+  flex: 1;
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.itemControls {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.itemControls button {
+  background: none;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  padding: 2px 6px;
+  color: var(--color-text-muted);
+}
+
+.itemControls button:hover:not(:disabled) {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+.itemControls button:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.removeBtn {
+  color: var(--color-text-muted);
+}
+
+.removeBtn:hover:not(:disabled) {
+  border-color: #d32f2f !important;
+  color: #d32f2f !important;
+}
+
+/* ── Add row ─────────────────────────────────────────────────────────────── */
+
+.addRow {
+  display: flex;
+  gap: 8px;
+}
+
+.urlInput {
+  flex: 1;
+  padding: 8px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  font-size: 0.875rem;
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+
+.urlInput:focus {
+  outline: none;
+  border-color: var(--color-accent);
+}
+
+.addUrlBtn {
+  background: none;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  font-size: 0.875rem;
+  padding: 8px 14px;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+.addUrlBtn:hover:not(:disabled) {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+.addUrlBtn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* ── Actions ─────────────────────────────────────────────────────────────── */
+
+.error {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #d32f2f;
+}
+
+.actions {
+  display: flex;
+  gap: 10px;
+}
+
+.saveBtn {
+  background: var(--color-accent);
+  border: none;
+  border-radius: var(--radius);
+  color: #fff;
+  cursor: pointer;
+  font-size: 0.9rem;
+  padding: 8px 18px;
+}
+
+.saveBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.cancelBtn {
+  background: none;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  font-size: 0.9rem;
+  padding: 8px 14px;
+}
+
+.cancelBtn:hover:not(:disabled) {
+  border-color: var(--color-text-muted);
+}
