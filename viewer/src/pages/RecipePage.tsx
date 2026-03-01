@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import type { Recipe, RecipeImage } from '../types';
+import type { Recipe, RecipeImage as RecipeImageType } from '../types';
 import ImageCarousel from '../components/ImageCarousel';
 import RecipeImage from '../components/RecipeImage';
 import styles from './RecipePage.module.css';
@@ -38,7 +38,7 @@ export default function RecipePage() {
     return () => controller.abort();
   }, [id]);
 
-  function handleImagesChange(images: RecipeImage[]) {
+  function handleImagesChange(images: RecipeImageType[]) {
     setRecipe((prev) => (prev ? { ...prev, images } : prev));
   }
 
