@@ -1,6 +1,6 @@
 <?php
 /**
- * GET /api/image?id=<uuid>&n=<1|2>
+ * GET /api/image?id=<uuid>&n=<positive integer>
  * Streams a recipe image (JPEG) from the data directory.
  * Validates both parameters before constructing any file path.
  */
@@ -17,10 +17,10 @@ if (!preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$
     exit;
 }
 
-// Validate image index
-if ($n !== '1' && $n !== '2') {
+// Validate image index (positive integer)
+if (!preg_match('/^[1-9][0-9]*$/', $n)) {
     http_response_code(400);
-    echo 'Invalid n (must be 1 or 2)';
+    echo 'Invalid n (must be a positive integer)';
     exit;
 }
 
