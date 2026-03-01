@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import type { Recipe, RecipeImage } from '../types';
 import ImageCarousel from '../components/ImageCarousel';
+import RecipeImage from '../components/RecipeImage';
 import styles from './RecipePage.module.css';
 
 type Status = 'loading' | 'error' | 'notfound' | 'ready';
@@ -53,6 +54,14 @@ export default function RecipePage() {
 
       {status === 'ready' && recipe && (
         <>
+          <RecipeImage
+            recipeId={recipe.id}
+            images={recipe.images}
+            index={0}
+            className={styles.hero}
+            loading="eager"
+          />
+
           <h1 className={styles.title}>{recipe.title}</h1>
           <p className={styles.description}>{recipe.description}</p>
 
