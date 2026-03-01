@@ -17,6 +17,14 @@
   text-decoration: underline;
 }
 
+.hero {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  border-radius: 12px;
+  background: var(--color-tag-bg);
+}
+
 .title {
   font-size: 2rem;
   line-height: 1.2;
